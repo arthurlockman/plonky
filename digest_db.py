@@ -34,7 +34,7 @@ print(demo_solo.title)
 melody = c.execute('select %s from melody where melid=?' % melody_table_keys, str(demo_solo.melid))
 
 ticks_per_quarter_note = 1024
-quarter_notes_per_beat = int(demo_solo.signature.split('/')[1]) / 8
+quarter_notes_per_beat = int(demo_solo.signature.split('/')[1]) / 4
 beats_per_minute = demo_solo.avgtempo
 ticks_per_second = ticks_per_quarter_note * quarter_notes_per_beat * beats_per_minute / 60
 last_event_time = 0
