@@ -28,10 +28,13 @@ MelodyMetadata = namedtuple('MelodyMetadata', ['melid', 'eventid', 'onset', 'pit
 melody_table_keys = ', '.join(MelodyMetadata._fields)
 
 
-all_melody = c.execute('select loud_cent from melody')
-demo_solo = valid_solos[0]
-print(demo_solo.title)
-melody = c.execute('select %s from melody where melid=?' % melody_table_keys, str(demo_solo.melid))
+demo_solo = valid_solos[40]
+
+print(demo_solo.title, demo_solo.melid)
+chords = [c.strip(' ') for c in demo_solo.chord_changes.split('|') if c is not '']
+print(chords)
+
+melody = c.execute('select %s from melody where melid=%i' % (melody_table_keys, demo_solo.melid))
 
 ticks_per_quarter_note = 1024
 quarter_notes_per_beat = int(demo_solo.signature.split('/')[1]) / 4
