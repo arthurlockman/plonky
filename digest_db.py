@@ -1,5 +1,6 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
+import random
 from music21 import midi
 from collections import namedtuple
 import sqlite3
@@ -28,10 +29,15 @@ MelodyMetadata = namedtuple('MelodyMetadata', ['melid', 'eventid', 'onset', 'pit
 melody_table_keys = ', '.join(MelodyMetadata._fields)
 
 
-demo_solo = valid_solos[40]
+demo_solo = valid_solos[random.randint(0, 290)]
 
 print(demo_solo.title, demo_solo.melid)
-chords = [c.strip(' ') for c in demo_solo.chord_changes.split('|') if c is not '']
+chords = []
+# this is not sufficient/correct, because there can be chord changes within a measure
+for chord in demo_solo.chord_changes.split('|'):
+    chord = chord.strip(' ')
+    if chord is not '' and ':' not in chord:
+        chords.append(chord)
 print(chords)
 
 melody = c.execute('select %s from melody where melid=%i' % (melody_table_keys, demo_solo.melid))
