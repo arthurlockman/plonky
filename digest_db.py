@@ -66,7 +66,6 @@ for row in melody:
     off.pitch = int(event.pitch)
     off.velocity = 100  # event.loud_cent * 127
 
-
     last_event_time = event.onset
 
     track.events.append(delta_off)
