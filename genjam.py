@@ -36,43 +36,120 @@ class Measure(Genome):
         self.fitness = int(np.random.rand() * 100)
 
     @staticmethod
+    def reverse(g):
+        for first in range(int(g.length/2)):
+            last = g.length - 1 - first
+            tmp = g[first]
+            g[first] = g[last]
+            g[last] = tmp
+
+    @staticmethod
+    def rotate(g):
+        Measure._rotate(g, np.random.randint(1, 7))
+
+    @staticmethod
+    def _rotate(g, num_rotations):
+        for i in range(num_rotations):
+            g.data.ror(g.number_size)
+
+    @staticmethod
+    def invert(g):
+        for i in range(g.length):
+            g[i] = 15 - g[i]
+
+    @staticmethod
+    def sort_ascending(g):
+        actual_notes = []
+        zeros_and_fifteens = []
+
+        # pull out the 0's and 15's
+        for i in range(g.length):
+            if g[i] == 0 or g[i] == 15:
+                zeros_and_fifteens.append((i, g[i]))
+            else:
+                actual_notes.append(g[i])
+
+        # sort the real notes
+        sorted_notes = sorted(actual_notes)
+
+        # put the 0's and 15's back
+        for i, x in zeros_and_fifteens:
+            sorted_notes.insert(i, x)
+
+        # copy the values back to g
+        for idx in range(g.length):
+            g[idx] = sorted_notes[idx]
+
+    @staticmethod
+    def sort_descending(g):
+        actual_notes = []
+        zeros_and_fifteens = []
+
+        # pull out the 0's and 15's
+        for i in range(g.length):
+            if g[i] == 0 or g[i] == 15:
+                zeros_and_fifteens.append((i, g[i]))
+            else:
+                actual_notes.append(g[i])
+
+        # sort the real notes
+        sorted_notes = sorted(actual_notes, key=lambda n: -n)
+
+        # put the 0's and 15's back
+        for i, x in zeros_and_fifteens:
+            sorted_notes.insert(i, x)
+
+        # copy the values back to g
+        for idx in range(g.length):
+            g[idx] = sorted_notes[idx]
+
+    @staticmethod
+    def transpose(g):
+        signed_steps = np.random.randint(1, 8)
+
+        max_val = 1
+        min_val = 14
+        for idx in range(g.length):
+            if g[idx] == 0 or g[idx] == 15:
+                continue
+            if g[idx] < min_val:
+                min_val = g[idx]
+            if g[idx] > max_val:
+                max_val = g[idx]
+
+        if (14 - max_val) < (min_val - 1):
+            signed_steps = -signed_steps
+
+        Measure._transpose(g, signed_steps)
+
+    @staticmethod
+    def _transpose(g, signed_steps):
+        for idx in range(g.length):
+            if g[idx] == 0 or g[idx] == 15:
+                continue
+            tmp = g[idx] + signed_steps
+            if tmp > 14:
+                g[idx] = 14 - (tmp - 14)
+            elif tmp < 1:
+                g[idx] = 1 + (1 - tmp)
+            else:
+                g[idx] = tmp
+
+    @staticmethod
     def mutate(parent1, parent2, baby1, baby2, population):
-        def reverse(g):
-            for first in range(g.length/2):
-                last = g.length - 1 - first
-                tmp = g[first]
-                g[first] = g[last]
-                g[last] = tmp
-
-        def rotate(g):
-            pass
-
-        def invert(g):
-            pass
-
-        def sort_ascending(g):
-            pass
-
-        def sort_descending(g):
-            pass
-
-        def transpose(g):
-            steps = np.random.randint(1, 4)
-            pass
-
         mutations = [
-            reverse,
-            rotate,
-            invert,
-            sort_ascending,
-            sort_descending,
-            transpose,
+            Measure.reverse,
+            Measure.rotate,
+            Measure.invert,
+            Measure.sort_ascending,
+            Measure.sort_descending,
+            Measure.transpose,
         ]
 
         # do nothing to parents or baby1.
         # mutate baby2 in one of various ways
         mutation_func = np.random.choice(mutations, 1)[0]
-        baby2 = reverse(baby2)
+        mutation_func(baby2)
 
 
 class Phrase(Genome):
@@ -93,42 +170,54 @@ class Phrase(Genome):
         self.fitness = int(np.random.rand() * 100)
 
     @staticmethod
+    def reverse(g):
+        for first in range(int(g.length/2)):
+            last = g.length - 1 - first
+            tmp = g[first]
+            g[first] = g[last]
+            g[last] = tmp
+
+    @staticmethod
+    def rotate(g):
+        rotations = np.random.randint(1, 7)
+        for i in range(rotations):
+            g.data.ror(g.number_size)
+
+    @staticmethod
+    def genetic_repair(g):
+        new_random_measure = np.random.randint(population.size)
+        new_g = sorted(g)
+        new_g[0] = new_random_measure
+        for i in range(g.length):
+            g[i] = new_g[i]
+
+    @staticmethod
+    def super_phrase(g):
+        pass
+
+    @staticmethod
+    def lick_thinner(g):
+        pass
+
+    @staticmethod
+    def orphan(g):
+        pass
+
+    @staticmethod
     def mutate(parent1, parent2, baby1, baby2, population):
-        def reverse(g):
-            for first in range(g.length/2):
-                last = g.length - 1 - first
-                tmp = g[first]
-                g[first] = g[last]
-                g[last] = tmp
-
-        def rotate(g):
-            pass
-
-        def genetic_repair(g):
-            pass
-
-        def super_phrase(g):
-            pass
-
-        def lick_thinner(g):
-            pass
-
-        def orphan(g):
-            pass
-
         mutations = [
-            reverse,
-            rotate,
-            genetic_repair,
-            super_phrase,
-            lick_thinner,
-            orphan,
+            Phrase.reverse,
+            Phrase.rotate,
+            Phrase.genetic_repair,
+            Phrase.super_phrase,
+            Phrase.lick_thinner,
+            Phrase.orphan,
         ]
 
         # do nothing to parents or baby1.
         # mutate baby2 in one of various ways
         mutation_func = np.random.choice(mutations, 1)[0]
-        baby2 = mutation_func(baby2)
+        mutation_func(baby2)
 
 
 class MeasurePopulation(Population):
