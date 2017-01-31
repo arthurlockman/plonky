@@ -7,7 +7,7 @@ from ga import Genome, Population, run
 class NumberGenome(Genome):
 
     def __init__(self, number_size):
-        super().__init__(length=4, number_size=number_size, signed=True)
+        super().__init__(length=6, number_size=number_size, signed=True)
 
     def initialize(self):
         num_bits = self.number_size * self.length
@@ -20,6 +20,21 @@ class NumberGenome(Genome):
         baby2 = NumberGenome(self.number_size)
         baby2.data = other_genome.data[:bit_idx] + self.data[bit_idx:]
         return baby1, baby2
+
+    def assign_fitness(self):
+        self.fitness = sum(self.as_numpy())
+
+    @staticmethod
+    def mutate(parent1, parent2, baby1, baby2, population):
+        for g in [parent1, parent2, baby1, baby2]:
+            if np.random.rand() < 0.40:
+                idx = np.random.randint(0, g.length)
+                if g[idx] < g.MAX_INT:
+                    g[idx] += 1
+            if np.random.rand() < 0.80:
+                idx = np.random.randint(0, g.length)
+                if g[idx] > g.MIN_INT:
+                    g[idx] -= 1
 
 
 class NumberPopulation(Population):
@@ -34,39 +49,17 @@ class NumberPopulation(Population):
 
         return selected
 
-
-def mutate(parent1, parent2, baby1, baby2):
-    for g in [parent1, parent2, baby1, baby2]:
-        if not isinstance(g, NumberGenome):
-            sys.exit("This mutation only works on NumberGenomes, not %s" % str(type(g)))
-
-        if np.random.rand() < 0.40:
-            idx = np.random.randint(0, g.length)
-            if g[idx] < g.MAX_INT:
-                g[idx] += 1
-        if np.random.rand() < 0.80:
-            idx = np.random.randint(0, g.length)
-            if g[idx] > g.MIN_INT:
-                g[idx] -= 1
-
-
-def fitness(genome):
-    if not isinstance(genome, NumberGenome):
-        sys.exit("This fitness only works on NumberGenomes")
-
-    genome.fitness = sum(genome.as_numpy())
-
 if __name__ == '__main__':
     S = 20
     pop = NumberPopulation(size=S)
     for i in range(pop.size):
-        g = NumberGenome(number_size=5)
+        g = NumberGenome(number_size=7)
         g.initialize()
         pop.genomes.append(g)
 
     N = 20
     for i in range(N):
-        pop = run(pop, mutate_method=mutate, assign_fitness=fitness)
+        pop = run(pop, mutate_method=NumberGenome.mutate)
         if i == 0 or i == N - 1:
             print(pop)
 

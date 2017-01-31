@@ -1,5 +1,6 @@
 import sys
 from bitstring import BitStream, CreationError
+from copy import deepcopy
 import numpy as np
 
 
@@ -11,18 +12,27 @@ def uint_to_bit_str(value, num_bits):
                  % (value, num_bits))
 
 
-def run(current_population, mutate_method, assign_fitness):
+def int_to_bit_str(value, num_bits):
+    try:
+        return BitStream(length=num_bits, int=value).bin
+    except CreationError as ce:
+        sys.exit('%i is out of the range of %i signed bits'
+                 % (value, num_bits))
+
+
+def run(current_population, mutate_method):
         for genome in current_population.genomes:
-            assign_fitness(genome)
+            genome.assign_fitness()
 
         selected_genomes = current_population.select()
+        unmodified_population = deepcopy(current_population)
         new_genomes = []
         for i, pair in enumerate(selected_genomes):
             g1, g2 = pair
             baby1, baby2 = g1.cross(g2)
             new_genomes += [baby1, baby2, g1, g2]
 
-            mutate_method(g1, g2, baby1, baby2)
+            mutate_method(g1, g2, baby1, baby2, unmodified_population)
         current_population.genomes = new_genomes
 
         return current_population
@@ -41,10 +51,13 @@ class Genome:
         self.id = 0
 
     def cross(self, other_genome):
-        pass
+        raise NotImplemented()
+
+    def assign_fitness(self):
+        raise NotImplemented()
 
     def initialize(self):
-        pass
+        raise NotImplemented()
 
     def __getitem__(self, idx):
         ''' get idx'th number genome as integer '''
@@ -67,7 +80,10 @@ class Genome:
         new_bin_str = ''
         for i, n in enumerate(self.data.cut(self.number_size)):
             if i == idx:
-                new_bin_str += int_to_bit_str(value, self.number_size)
+                if self.signed:
+                    new_bin_str += int_to_bit_str(value, self.number_size)
+                else:
+                    new_bin_str += uint_to_bit_str(value, self.number_size)
             else:
                 new_bin_str += n.bin
         self.data = BitStream(bin=new_bin_str)
@@ -96,7 +112,7 @@ class Population:
 
     def select(self):
         ''' return a list of 2-tuples of genomes to be crossed '''
-        pass
+        raise NotImplemented()
 
     def __repr__(self):
         r = ""
