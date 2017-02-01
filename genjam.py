@@ -36,7 +36,7 @@ class Measure(Genome):
         self.fitness = int(np.random.rand() * 100)
 
     @staticmethod
-    def reverse(g):
+    def reverse(g, population=None):
         for first in range(int(g.length/2)):
             last = g.length - 1 - first
             tmp = g[first]
@@ -44,7 +44,7 @@ class Measure(Genome):
             g[last] = tmp
 
     @staticmethod
-    def rotate(g):
+    def rotate(g, population=None):
         Measure._rotate(g, np.random.randint(1, 7))
 
     @staticmethod
@@ -53,12 +53,12 @@ class Measure(Genome):
             g.data.ror(g.number_size)
 
     @staticmethod
-    def invert(g):
+    def invert(g, population=None):
         for i in range(g.length):
             g[i] = 15 - g[i]
 
     @staticmethod
-    def sort_ascending(g):
+    def sort_ascending(g, population=None):
         actual_notes = []
         zeros_and_fifteens = []
 
@@ -81,7 +81,7 @@ class Measure(Genome):
             g[idx] = sorted_notes[idx]
 
     @staticmethod
-    def sort_descending(g):
+    def sort_descending(g, population=None):
         actual_notes = []
         zeros_and_fifteens = []
 
@@ -170,7 +170,7 @@ class Phrase(Genome):
         self.fitness = int(np.random.rand() * 100)
 
     @staticmethod
-    def reverse(g):
+    def reverse(g, population=None, measure_population=None):
         for first in range(int(g.length/2)):
             last = g.length - 1 - first
             tmp = g[first]
@@ -178,33 +178,98 @@ class Phrase(Genome):
             g[last] = tmp
 
     @staticmethod
-    def rotate(g):
-        rotations = np.random.randint(1, 7)
-        for i in range(rotations):
+    def rotate(g, num_rotations, population=None, measure_population=None):
+        Phrase._rotate(g, np.random.randint(1, 7))
+
+    @staticmethod
+    def _rotate(g, num_rotations):
+        for i in range(num_rotations):
             g.data.ror(g.number_size)
 
     @staticmethod
-    def genetic_repair(g):
-        new_random_measure = np.random.randint(population.size)
-        new_g = sorted(g)
-        new_g[0] = new_random_measure
+    def genetic_repair(g, population, measure_population):
+        new_random_measure = np.random.randint(measure_population.size)
+        Phrase._genetic_repair(g, new_random_measure)
+
+    @staticmethod
+    def _genetic_repair(g, new_measure):
+        min_f = sys.maxsize
+        min_idx = 0
+        for i in range(g.length):
+            if g[i] < min_f:
+                min_f = g[i]
+                min_idx = i
+
+        g[min_idx] = new_measure
+
+    @staticmethod
+    def super_phrase(g, population, measure_population):
+        new_g = []
+        for i in range(g.length):
+            # 3 measure tourney
+            max_f = 0
+            max_measure = 0
+            for _ in range(3):
+                m = np.random.randint(measure_population.size)
+                p = measure_population.genomes[m]
+                if p.fitness > max_f:
+                    max_f = p.fitness
+                    max_measure = m
+
+            new_g.append(max_measure)
+
         for i in range(g.length):
             g[i] = new_g[i]
 
     @staticmethod
-    def super_phrase(g):
-        pass
+    def lick_thinner(g, population, measure_population):
+        new_measure = np.random.randint(measure_population.size)
+        Phrase._lick_thinner(g, population, new_measure)
+
+    def _lick_thinner(g, population, new_measure):
+        counts = dict((idx, 0) for idx, el in enumerate(g))
+        for phrase in population.genomes:
+            for m in phrase:
+                if m in g:
+                    counts[m] += 1
+
+        max_count = 0
+        max_idx = 0
+        for idx, count in counts.items():
+            if count > max_count:
+                max_count = count
+                max_idx = idx
+
+        g[max_idx] = new_measure
 
     @staticmethod
-    def lick_thinner(g):
-        pass
+    def orphan(g, population, measure_population):
+        # count how often a measure exists in the phrase population
+        counts = dict((i, 0) for i in range(measure_population.size))
+        for phrase in population.genomes:
+            for measure in phrase:
+                counts[measure] += 1
+
+        new_g = []
+        for i in range(g.length):
+            # random tourney
+
+            min_count = sys.maxsize
+            min_m = 0
+            for _ in range(3):
+                m = np.random.randint(measure_population.size)
+                if counts[m] < min_count:
+                    min_count = counts[m]
+                    min_m = m
+
+            new_g.append(min_m)
+
+        for i in range(g.length):
+            g[i] = new_g[i]
+
 
     @staticmethod
-    def orphan(g):
-        pass
-
-    @staticmethod
-    def mutate(parent1, parent2, baby1, baby2, population):
+    def mutate(parent1, parent2, baby1, baby2, population, *args):
         mutations = [
             Phrase.reverse,
             Phrase.rotate,
@@ -217,7 +282,8 @@ class Phrase(Genome):
         # do nothing to parents or baby1.
         # mutate baby2 in one of various ways
         mutation_func = np.random.choice(mutations, 1)[0]
-        mutation_func(baby2)
+        measure_population = args[0]
+        mutation_func(baby2, population, measure_population)
 
 
 class MeasurePopulation(Population):
@@ -291,7 +357,7 @@ if __name__ == '__main__':
 
     N = 2
     for _ in range(N):
-        measures = run(measures, mutate_method=Measure.mutate)
-        phrases = run(measures, mutate_method=Phrase.mutate)
+        measures = run(measures, Measure.mutate)
+        phrases = run(phrases, Phrase.mutate, measures)
         print(phrases, measures)
 

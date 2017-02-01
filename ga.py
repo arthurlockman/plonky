@@ -20,7 +20,7 @@ def int_to_bit_str(value, num_bits):
                  % (value, num_bits))
 
 
-def run(current_population, mutate_method):
+def run(current_population, mutate_method, *mutation_args):
         for genome in current_population.genomes:
             genome.assign_fitness()
 
@@ -32,7 +32,7 @@ def run(current_population, mutate_method):
             baby1, baby2 = g1.cross(g2)
             new_genomes += [baby1, baby2, g1, g2]
 
-            mutate_method(g1, g2, baby1, baby2, unmodified_population)
+            mutate_method(g1, g2, baby1, baby2, unmodified_population, *mutation_args)
         current_population.genomes = new_genomes
 
         return current_population
