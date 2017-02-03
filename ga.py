@@ -42,8 +42,6 @@ class Genome:
 
     def __init__(self, length, number_size, signed=False):
         self.number_size = number_size
-        self.MAX_INT = 1 << (number_size - 1) - 1
-        self.MIN_INT = -1 << (number_size - 1)
         self.length = length
         self.data = BitStream()
         self.fitness = 0
@@ -51,13 +49,13 @@ class Genome:
         self.id = 0
 
     def cross(self, other_genome):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def assign_fitness(self):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def initialize(self):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def __getitem__(self, idx):
         ''' get idx'th number genome as integer '''

@@ -1,3 +1,4 @@
+import time
 import sys
 from math import log
 import numpy as np
@@ -33,7 +34,8 @@ class Measure(Genome):
         return baby1, baby2
 
     def assign_fitness(self):
-        self.fitness = int(np.random.rand() * 100)
+        s = sum(self)
+        self.fitness = s
 
     @staticmethod
     def reverse(g, population=None):
@@ -168,6 +170,7 @@ class Phrase(Genome):
 
     def assign_fitness(self):
         self.fitness = int(np.random.rand() * 100)
+        # raise NotImplementedError()
 
     @staticmethod
     def reverse(g, population=None, measure_population=None):
@@ -230,8 +233,10 @@ class Phrase(Genome):
         counts = dict((idx, 0) for idx, el in enumerate(g))
         for phrase in population.genomes:
             for m in phrase:
-                if m in g:
-                    counts[m] += 1
+                for i in range(g.length):
+                    if g[i] == m:
+                        counts[i] += 1
+                        continue
 
         max_count = 0
         max_idx = 0
@@ -266,7 +271,6 @@ class Phrase(Genome):
 
         for i in range(g.length):
             g[i] = new_g[i]
-
 
     @staticmethod
     def mutate(parent1, parent2, baby1, baby2, population, *args):
@@ -355,9 +359,12 @@ if __name__ == '__main__':
         g.initialize()
         phrases.genomes.append(g)
 
-    N = 2
+    N = 20
+    t0 = time.time()
     for _ in range(N):
         measures = run(measures, Measure.mutate)
         phrases = run(phrases, Phrase.mutate, measures)
-        print(phrases, measures)
+
+    t1 = time.time()
+    print("Training Time:", t1 - t0)
 
