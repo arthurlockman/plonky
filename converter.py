@@ -26,10 +26,11 @@ chord_shapes = {
 
 class SoloMetadata:
 
-    def __init__(self, key, chords, time_signature, tempo):
+    def __init__(self, key, chords, time_signature, tempo, smallest_note):
         self.key = music21.key.Key(key)
         self.chords = chords
         self.time_signature = music21.meter.TimeSignature(time_signature)
+        self.resolution = self.time_signature.denominator / smallest_note
         self.tempo = tempo
 
 
@@ -42,9 +43,6 @@ def phrase_to_midi(phrase, measure_population, metadata):
     s = music21.stream.Stream()
     s.append(music21.tempo.MetronomeMark(number=metadata.tempo))
 
-    genjam_resolution = 8  # one genjam measure number is an 8th note
-    gene_duration = metadata.time_signature.denominator / genjam_resolution
-
     # do midi conversion
     harmonic_idx = 0
     idx = 0
@@ -52,18 +50,18 @@ def phrase_to_midi(phrase, measure_population, metadata):
 
         current_chord_info = metadata.chords[harmonic_idx]
         note_chord_offsets = chord_shapes[current_chord_info[2]]
-        beats_for_chord = current_chord_info[1]
+        beats_for_chord = current_chord_info[1] / metadata.resolution
         if genjam_e == 0:
             if len(s.notes) == 0:
                 s.append(music21.note.Rest())
 
             # extend previous note or rest
-            s.notesAndRests[-1].duration.quarterLength += gene_duration
+            s.notesAndRests[-1].duration.quarterLength += metadata.resolution
         elif genjam_e == 15:
             s.append(music21.note.Rest())
         else:
             new_note = music21.note.Note(current_chord_info[0])
-            new_note.duration.quarterLength = gene_duration
+            new_note.duration.quarterLength = metadata.resolution
             tonic_midi_pitch = new_note.pitch.midi
             new_note.pitch.midi = tonic_midi_pitch + note_chord_offsets[genjam_e - 1]
             s.append(new_note)
@@ -79,19 +77,20 @@ def phrase_to_midi(phrase, measure_population, metadata):
 
 
 def main():
-    # Chords are a tuple of the tonic, then the key for the chord shape
-    chords = [('C3', 8, 'maj'), ('A2', 8, 'min'), ('F2', 8, 'maj'), ('G2', 8, 'maj')]
-    metadata = SoloMetadata('C', chords, '4/4', 100)
+    # Chords are (tonic with register info, number of beats, chord shape)
+    chords = [('C3', 4, 'maj'), ('A2', 4, 'min'), ('F2', 4, 'maj'), ('G2', 4, 'maj')]
+    smallest_note = 8
+    metadata = SoloMetadata('C', chords, '4/4', 100, smallest_note)
 
     measures = MeasurePopulation(10)
     for i in range(measures.size):
-        m = Measure(8, 4)
+        m = Measure(smallest_note, 4)
         m.initialize()
         for j in range(m.length):
-            m[j] = np.random.randint(1, 15)
+            m[j] = 1
         measures.genomes.append(m)
 
-    p = Phrase(8, 6)
+    p = Phrase(2, 6)
     p.initialize()
     for i in range(p.length):
         p[i] = i
