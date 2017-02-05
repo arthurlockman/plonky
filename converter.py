@@ -1,8 +1,5 @@
-import sys
-import numpy as np
-from genjam import Measure, Phrase, MeasurePopulation
 import music21
-
+from copy import deepcopy
 
 # Each number is midi pitch relative to the tonic of the chord
 # Each chord shape has 14 possible things, mapping to genjam's 1-14
@@ -24,33 +21,59 @@ chord_shapes = {
 }
 
 
-class SoloMetadata:
+class MyChord:
+
+    def __init__(self, root, beats, shape):
+        self.root = root
+        self.beats = beats
+        self.shape = shape
+
+
+class Metadata:
 
     def __init__(self, key, chords, time_signature, tempo, smallest_note):
         self.key = music21.key.Key(key)
         self.chords = chords
         self.time_signature = music21.meter.TimeSignature(time_signature)
         self.resolution = self.time_signature.denominator / smallest_note
+        self.notes_per_measure = int(smallest_note * self.time_signature.numerator / self.time_signature.denominator)
         self.tempo = tempo
 
 
 def phrase_to_midi(phrase, measure_population, metadata):
-    genjam_events = []
-    for on in phrase:
-        measure = measure_population.genomes[on]
-        genjam_events.extend(measure)
+    measure_metadata = deepcopy(metadata)
 
+    phrase_stream = music21.stream.Stream()
+    phrase_stream.append(music21.tempo.MetronomeMark(number=metadata.tempo))
+    for measure in phrase:
+        measure = measure_population.genomes[measure]
+        measure_stream, beat_idx, chord_idx = measure_to_midi(measure, measure_metadata)
+
+        # remove the MetronomeMark from the measure_stream
+        measure_stream = measure_stream[1:]
+        phrase_stream.append(measure_stream)
+
+        measure_metadata.chords = measure_metadata.chords[chord_idx:]
+        if len(measure_metadata.chords) == 0:
+            measure_metadata.chords = deepcopy(metadata.chords)
+        measure_metadata.chords[0].beats -= beat_idx
+
+    return phrase_stream
+
+
+def measure_to_midi(measure, metadata):
     s = music21.stream.Stream()
     s.append(music21.tempo.MetronomeMark(number=metadata.tempo))
 
     # do midi conversion
-    harmonic_idx = 0
+    chord_idx = 0
     idx = 0
-    for genjam_e in genjam_events:
+    for genjam_e in measure:
 
-        current_chord_info = metadata.chords[harmonic_idx]
-        note_chord_offsets = chord_shapes[current_chord_info[2]]
-        beats_for_chord = current_chord_info[1] / metadata.resolution
+        current_chord_info = metadata.chords[chord_idx]
+        note_chord_offsets = chord_shapes[current_chord_info.shape]
+        genes_per_chord = current_chord_info.beats / metadata.resolution
+        assert(genes_per_chord.is_integer())
         if genjam_e == 0:
             if len(s.notes) == 0:
                 s.append(music21.note.Rest())
@@ -60,50 +83,15 @@ def phrase_to_midi(phrase, measure_population, metadata):
         elif genjam_e == 15:
             s.append(music21.note.Rest())
         else:
-            new_note = music21.note.Note(current_chord_info[0])
+            new_note = music21.note.Note(current_chord_info.root)
             new_note.duration.quarterLength = metadata.resolution
             tonic_midi_pitch = new_note.pitch.midi
             new_note.pitch.midi = tonic_midi_pitch + note_chord_offsets[genjam_e - 1]
             s.append(new_note)
 
         idx += 1
-        if idx == beats_for_chord:
+        if idx == genes_per_chord:
             idx = 0
-            harmonic_idx += 1
-            if harmonic_idx >= len(metadata.chords):
-                harmonic_idx = 0
+            chord_idx += 1
 
-    return s
-
-
-def main():
-    # Chords are (tonic with register info, number of beats, chord shape)
-    chords = [('C3', 4, 'maj'), ('A2', 4, 'min'), ('F2', 4, 'maj'), ('G2', 4, 'maj')]
-    smallest_note = 8
-    metadata = SoloMetadata('C', chords, '4/4', 100, smallest_note)
-
-    measures = MeasurePopulation(10)
-    for i in range(measures.size):
-        m = Measure(smallest_note, 4)
-        m.initialize()
-        for j in range(m.length):
-            m[j] = 1
-        measures.genomes.append(m)
-
-    p = Phrase(2, 6)
-    p.initialize()
-    for i in range(p.length):
-        p[i] = i
-
-    stream = phrase_to_midi(p, measures, metadata)
-
-    sp = music21.midi.realtime.StreamPlayer(stream)
-
-    def onEnd(args):
-        print("Clip done")
-
-    sp.play(endFunction=onEnd)
-
-
-if __name__ == "__main__":
-    main()
+    return s, idx * metadata.resolution, chord_idx

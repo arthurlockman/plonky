@@ -20,22 +20,22 @@ def int_to_bit_str(value, num_bits):
                  % (value, num_bits))
 
 
-def run(current_population, mutate_method, *mutation_args):
-        for genome in current_population.genomes:
-            genome.assign_fitness()
+def run(current_population, mutate_method, *args):
+    for genome in current_population.genomes:
+        genome.assign_fitness(args)
 
-        selected_genomes = current_population.select()
-        unmodified_population = deepcopy(current_population)
-        new_genomes = []
-        for i, pair in enumerate(selected_genomes):
-            g1, g2 = pair
-            baby1, baby2 = g1.cross(g2)
-            new_genomes += [baby1, baby2, g1, g2]
+    selected_genomes = current_population.select()
+    unmodified_population = deepcopy(current_population)
+    new_genomes = []
+    for i, pair in enumerate(selected_genomes):
+        g1, g2 = pair
+        baby1, baby2 = g1.cross(g2)
+        new_genomes += [baby1, baby2, g1, g2]
 
-            mutate_method(g1, g2, baby1, baby2, unmodified_population, *mutation_args)
-        current_population.genomes = new_genomes
+        mutate_method(g1, g2, baby1, baby2, unmodified_population, *args)
+    current_population.genomes = new_genomes
 
-        return current_population
+    return current_population
 
 
 class Genome:

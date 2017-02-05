@@ -1,6 +1,8 @@
 import time
 import sys
 from math import log
+import music21
+from converter import Metadata, phrase_to_midi, chord_shapes
 import numpy as np
 from bitstring import BitStream
 from ga import Genome, Population, run, uint_to_bit_str
@@ -34,8 +36,14 @@ class Measure(Genome):
         return baby1, baby2
 
     def assign_fitness(self):
-        s = sum(self)
-        self.fitness = s
+        stream = phrase_to_midi(self, measures, metadata)
+        sp = music21.midi.realtime.StreamPlayer(stream)
+        sp.play()
+        i = input('g/b?')
+        if i == 'g':
+            self.fitness += 1
+        elif i == 'b':
+            self.fitness -= 1
 
     @staticmethod
     def reverse(g, population=None):
@@ -168,9 +176,15 @@ class Phrase(Genome):
         baby2.data = other_genome.data[:bit_idx] + self.data[bit_idx:]
         return baby1, baby2
 
-    def assign_fitness(self):
-        self.fitness = int(np.random.rand() * 100)
-        # raise NotImplementedError()
+    def assign_fitness(self, measures):
+        stream = phrase_to_midi(self, measures, metadata)
+        sp = music21.midi.realtime.StreamPlayer(stream)
+        sp.play()
+        i = input('g/b?')
+        if i == 'g':
+            self.fitness += 1
+        elif i == 'b':
+            self.fitness -= 1
 
     @staticmethod
     def reverse(g, population=None, measure_population=None):
