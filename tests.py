@@ -1,7 +1,8 @@
 import unittest
 from copy import deepcopy
+from converter import measure_to_midi, phrase_to_midi, chord_shapes, MyChord, Metadata
 from genjam import Measure, Phrase, PhrasePopulation, MeasurePopulation
-
+import music21
 
 class MutationTests(unittest.TestCase):
 
@@ -241,3 +242,22 @@ class MutationTests(unittest.TestCase):
 
         # not a very good test...
         self.assertNotEquals(p, original_p)
+
+class ConverterTests(unittest.TestCase):
+
+    def test_conversion_4_4_8ths(self):
+        chords = [MyChord('C3', 4, 'maj'), MyChord('A2', 4, 'min'), MyChord('F2', 4, 'maj'), MyChord('G2', 4, 'maj')]
+        smallest_note = 8
+        metadata = Metadata('C', chords, '4/4', 100, smallest_note)
+
+        for i in range(100):
+            m = Measure(metadata.notes_per_measure, 4)
+            m.initialize()
+            stream, _, _ = measure_to_midi(m, metadata)
+
+            measure_len = 0
+            for event in stream:
+                if isinstance(event, music21.note.Note) or isinstance(event, music21.note.Rest):
+                    measure_len += event.quarterLength
+
+            self.assertEqual(measure_len, 4)

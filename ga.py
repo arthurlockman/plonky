@@ -20,9 +20,11 @@ def int_to_bit_str(value, num_bits):
                  % (value, num_bits))
 
 
-def run(current_population, mutate_method, *args):
-    for genome in current_population.genomes:
-        genome.assign_fitness(args)
+def run(current_population, mutate_method, fitness_method, *args):
+    if fitness_method:
+        fitness_method(current_population.genomes, *args)
+    # for genome in current_population.genomes:
+    #     genome.assign_fitness(*args)
 
     selected_genomes = current_population.select()
     unmodified_population = deepcopy(current_population)
@@ -32,7 +34,8 @@ def run(current_population, mutate_method, *args):
         baby1, baby2 = g1.cross(g2)
         new_genomes += [baby1, baby2, g1, g2]
 
-        mutate_method(g1, g2, baby1, baby2, unmodified_population, *args)
+        if mutate_method:
+            mutate_method(g1, g2, baby1, baby2, unmodified_population, *args)
     current_population.genomes = new_genomes
 
     return current_population
@@ -49,9 +52,6 @@ class Genome:
         self.id = 0
 
     def cross(self, other_genome):
-        raise NotImplementedError()
-
-    def assign_fitness(self):
         raise NotImplementedError()
 
     def initialize(self):

@@ -2,7 +2,7 @@ import time
 import sys
 from math import log
 import music21
-from converter import Metadata, phrase_to_midi, chord_shapes
+from converter import Metadata, phrase_to_midi, MyChord
 import numpy as np
 from bitstring import BitStream
 from ga import Genome, Population, run, uint_to_bit_str
@@ -37,16 +37,6 @@ class Measure(Genome):
         baby2 = Phrase(self.length, self.number_size)
         baby2.data = other_genome.data[:bit_idx] + self.data[bit_idx:]
         return baby1, baby2
-
-    def assign_fitness(self):
-        stream = phrase_to_midi(self, measures, metadata)
-        sp = music21.midi.realtime.StreamPlayer(stream)
-        sp.play()
-        i = nbinput.input('g/b? ')
-        if i == 'g':
-            self.fitness += 1
-        elif i == 'b':
-            self.fitness -= 1
 
     @staticmethod
     def reverse(g, population=None):
@@ -162,6 +152,7 @@ class Measure(Genome):
         # do nothing to parents or baby1.
         # mutate baby2 in one of various ways
         mutation_func = np.random.choice(mutations, 1)[0]
+        print(mutation_func)
         mutation_func(baby2)
 
 
@@ -346,18 +337,29 @@ class PhrasePopulation(Population):
 
         return selected
 
+    @staticmethod
+    def assign_fitness(phrase_genomes, measures, metadata):
+        population_stream = music21.stream.Stream()
+        for phrase in phrase_genomes:
+            phrase_stream = phrase_to_midi(phrase, measures, metadata)
+            population_stream.append(phrase_stream)
 
-if __name__ == '__main__':
+        population_stream.show()
+        # sp = music21.midi.realtime.StreamPlayer(population_stream)
+        # sp.play()
+        # i = input('g/b?')
+        # if i == 'g':
+        #     phrase.fitness += 1
+        # elif i == 'b':
+        #     phrase.fitness -= 1
+
+
+def main():
     measure_pop_size = 64
-    time_signature = (4, 4)
-    smallest_note_duration = 8  #8 == 1/8th note
+    smallest_note = 8
+    chords = [MyChord('C3', 4, 'maj'), MyChord('A2', 4, 'min'), MyChord('F2', 4, 'maj'), MyChord('G2', 4, 'maj')]
+    metadata = Metadata('C', chords, '4/4', 100, smallest_note)
     measures_per_phrase = 4
-
-    events_per_measure = smallest_note_duration * time_signature[0] / time_signature[1]
-
-    if not events_per_measure.is_integer():
-        sys.exit("You can't use 1/%i notes in %i/%i" % (smallest_note_duration, time_signature[0], time_signature[1]))
-    events_per_measure = int(events_per_measure)
 
     phrase_genome_len = log(measure_pop_size, 2)
     if not phrase_genome_len.is_integer():
@@ -366,22 +368,28 @@ if __name__ == '__main__':
 
     measures = MeasurePopulation(64)
     for _ in range(measures.size):
-        g = Measure(length=events_per_measure, number_size=4)
-        g.initialize()
-        measures.genomes.append(g)
+        m = Measure(length=metadata.notes_per_measure, number_size=4)
+        m.initialize()
+        for i in range(m.length):
+            if m[i] == 0:
+                m[i] = 1
+        measures.genomes.append(m)
 
     phrases = PhrasePopulation(48)
     for _ in range(phrases.size):
-        g = Phrase(length=measures_per_phrase, number_size=phrase_genome_len)
-        g.initialize()
-        phrases.genomes.append(g)
+        p = Phrase(length=measures_per_phrase, number_size=phrase_genome_len)
+        p.initialize()
+        phrases.genomes.append(p)
 
     N = 20
     t0 = time.time()
-    for _ in range(N):
-        measures = run(measures, Measure.mutate)
-        phrases = run(phrases, Phrase.mutate, measures)
+    # for _ in range(N):
+    # measures = run(measures, Measure.mutate, None)
+    phrases = run(phrases, Phrase.mutate, PhrasePopulation.assign_fitness, measures, metadata)
 
     t1 = time.time()
     print("Training Time:", t1 - t0)
 
+
+if __name__ == '__main__':
+    main()
