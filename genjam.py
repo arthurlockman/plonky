@@ -344,14 +344,13 @@ class PhrasePopulation(Population):
             phrase_stream = phrase_to_midi(phrase, measures, metadata)
             population_stream.append(phrase_stream)
 
-        population_stream.show()
-        # sp = music21.midi.realtime.StreamPlayer(population_stream)
-        # sp.play()
-        # i = input('g/b?')
-        # if i == 'g':
-        #     phrase.fitness += 1
-        # elif i == 'b':
-        #     phrase.fitness -= 1
+        sp = music21.midi.realtime.StreamPlayer(population_stream)
+        sp.play()
+        i = input('g/b?')
+        if i == 'g':
+            phrase.fitness += 1
+        elif i == 'b':
+            phrase.fitness -= 1
 
 
 def main():
@@ -384,7 +383,7 @@ def main():
     N = 20
     t0 = time.time()
     # for _ in range(N):
-    # measures = run(measures, Measure.mutate, None)
+    measures = run(measures, Measure.mutate, None)
     phrases = run(phrases, Phrase.mutate, PhrasePopulation.assign_fitness, measures, metadata)
 
     t1 = time.time()

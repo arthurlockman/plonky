@@ -250,7 +250,7 @@ class ConverterTests(unittest.TestCase):
         smallest_note = 8
         metadata = Metadata('C', chords, '4/4', 100, smallest_note)
 
-        for i in range(100):
+        for i in range(200):
             m = Measure(metadata.notes_per_measure, 4)
             m.initialize()
             stream, _, _ = measure_to_midi(m, metadata)
