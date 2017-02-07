@@ -345,13 +345,7 @@ class PhrasePopulation(Population):
             population_stream.append(phrase_stream)
 
         sp = music21.midi.realtime.StreamPlayer(population_stream)
-        sp.play()
-        i = input('g/b?')
-        if i == 'g':
-            phrase.fitness += 1
-        elif i == 'b':
-            phrase.fitness -= 1
-
+        sp.play(busyFunction=busy_func)
 
 def main():
     measure_pop_size = 64
@@ -380,14 +374,17 @@ def main():
         p.initialize()
         phrases.genomes.append(p)
 
-    N = 20
     t0 = time.time()
-    # for _ in range(N):
-    measures = run(measures, Measure.mutate, None)
-    phrases = run(phrases, Phrase.mutate, PhrasePopulation.assign_fitness, measures, metadata)
+    for _ in range(10):
+        PhrasePopulation.assign_fitness(phrases.genomes, measures, metadata)
+        print("Generation %i completed" % _)
 
     t1 = time.time()
     print("Training Time:", t1 - t0)
+
+    for _ in range(10):
+        measures = run(measures, Measure.mutate, None)
+        phrases = run(phrases, Phrase.mutate, PhrasePopulation.assign_fitness, measures, metadata)
 
 
 if __name__ == '__main__':
