@@ -6,6 +6,9 @@ from converter import Metadata, phrase_to_midi, chord_shapes
 import numpy as np
 from bitstring import BitStream
 from ga import Genome, Population, run, uint_to_bit_str
+from non_blocking_input import NonBlockingInput
+
+nbinput = NonBlockingInput()
 
 
 class Measure(Genome):
@@ -39,7 +42,7 @@ class Measure(Genome):
         stream = phrase_to_midi(self, measures, metadata)
         sp = music21.midi.realtime.StreamPlayer(stream)
         sp.play()
-        i = input('g/b?')
+        i = nbinput.input('g/b? ')
         if i == 'g':
             self.fitness += 1
         elif i == 'b':
@@ -180,7 +183,7 @@ class Phrase(Genome):
         stream = phrase_to_midi(self, measures, metadata)
         sp = music21.midi.realtime.StreamPlayer(stream)
         sp.play()
-        i = input('g/b?')
+        i = nbinput.input('g/b? ')
         if i == 'g':
             self.fitness += 1
         elif i == 'b':
