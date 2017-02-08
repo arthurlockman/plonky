@@ -329,6 +329,8 @@ class PhrasePopulation(Population):
 
     @staticmethod
     def assign_fitness(phrase_genomes, measures, metadata):
+        # in beats
+        feedback_offset = 2
         population_stream = music21.stream.Stream()
         for phrase in phrase_genomes:
             phrase_stream = phrase_to_midi(phrase, measures, metadata)
@@ -345,6 +347,7 @@ class PhrasePopulation(Population):
             def get_feedback(verbose):
                 nonlocal raw_count, measure_idx, beat_idx, t0
                 beat_idx = raw_count // prescalar
+                beat_idx = max(0, beat_idx - feedback_offset)
                 measure_idx = beat_idx // metadata.time_signature.numerator
 
                 i = nbinput.input()
@@ -364,9 +367,7 @@ class PhrasePopulation(Population):
 
                 raw_count += 1
 
-            sp.play(busyFunction=get_feedback, busyArgs=True, busyWaitMilliseconds=wait_ms)
-
-            print(phrase, measures)
+            sp.play(busyFunction=get_feedback, busyArgs=False, busyWaitMilliseconds=wait_ms)
 
 
 def main():
@@ -386,8 +387,6 @@ def main():
     for _ in range(measures.size):
         m = Measure(length=metadata.notes_per_measure, number_size=4)
         m.initialize()
-        for i in range(m.length):
-            m[i] = 1
         measures.genomes.append(m)
 
     phrases = PhrasePopulation(48)
