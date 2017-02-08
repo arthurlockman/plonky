@@ -170,16 +170,6 @@ class Phrase(Genome):
         baby2.data = other_genome.data[:bit_idx] + self.data[bit_idx:]
         return baby1, baby2
 
-    def assign_fitness(self, measures):
-        stream = phrase_to_midi(self, measures, metadata)
-        sp = music21.midi.realtime.StreamPlayer(stream)
-        sp.play()
-        i = nbinput.input('g/b? ')
-        if i == 'g':
-            self.fitness += 1
-        elif i == 'b':
-            self.fitness -= 1
-
     @staticmethod
     def reverse(g, population=None, measure_population=None):
         for first in range(int(g.length/2)):
@@ -344,12 +334,45 @@ class PhrasePopulation(Population):
             phrase_stream = phrase_to_midi(phrase, measures, metadata)
             population_stream.append(phrase_stream)
 
-        sp = music21.midi.realtime.StreamPlayer(population_stream)
-        sp.play(busyFunction=busy_func)
+            sp = music21.midi.realtime.StreamPlayer(phrase_stream)
+            beat_idx = 0
+            measure_idx = 0
+            t0 = time.time()
+            prescalar = 8
+            raw_count = 0
+            wait_ms = metadata.ms_per_beat / prescalar
+
+            def get_feedback(verbose):
+                nonlocal raw_count, measure_idx, beat_idx, t0
+                beat_idx = raw_count // prescalar
+                measure_idx = beat_idx // metadata.time_signature.numerator
+
+                i = nbinput.input()
+                if i == 'g':
+                    if verbose:
+                        print("%2i +1" % measure_idx)
+                    phrase.fitness += 1
+                    measures.genomes[phrase[measure_idx]].fitness += 1
+                elif i == 'b':
+                    if verbose:
+                        print("%2i -1" % measure_idx)
+                    phrase.fitness -= 1
+                    measures.genomes[phrase[measure_idx]].fitness -= 1
+                else:
+                    if verbose:
+                        print("%2i" % measure_idx)
+
+                raw_count += 1
+
+            sp.play(busyFunction=get_feedback, busyArgs=True, busyWaitMilliseconds=wait_ms)
+
+            print(phrase, measures)
+
 
 def main():
     measure_pop_size = 64
     smallest_note = 8
+    # one measure of each chord for 4 beats each
     chords = [MyChord('C3', 4, 'maj'), MyChord('A2', 4, 'min'), MyChord('F2', 4, 'maj'), MyChord('G2', 4, 'maj')]
     metadata = Metadata('C', chords, '4/4', 100, smallest_note)
     measures_per_phrase = 4
@@ -364,8 +387,7 @@ def main():
         m = Measure(length=metadata.notes_per_measure, number_size=4)
         m.initialize()
         for i in range(m.length):
-            if m[i] == 0:
-                m[i] = 1
+            m[i] = 1
         measures.genomes.append(m)
 
     phrases = PhrasePopulation(48)

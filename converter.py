@@ -40,6 +40,7 @@ class Metadata:
         self.notes_per_beat = smallest_note / self.time_signature.denominator
         self.notes_per_measure = int(smallest_note * self.time_signature.numerator / self.time_signature.denominator)
         self.tempo = tempo
+        self.ms_per_beat = (60 * 1000 / tempo)
 
 
 def phrase_to_midi(phrase, measure_population, metadata, accompany=False):

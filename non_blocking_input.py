@@ -15,6 +15,7 @@ class NonBlockingInput:
         self.buffer = Queue()
         self.thread = threading.Thread(target=self._get_input, args=(self.buffer,))
         print('Starting input thread, q to quit.')
+        print('Type g to increase fitness, b to decrease it')
         self.thread.start()
 
     def _get_input(self, buffer):
@@ -45,7 +46,7 @@ class NonBlockingInput:
         """
         return not self.buffer.empty()
 
-    def input(self, text):
+    def input(self, text=None):
         """
         Behaves like the traditional input function, gets input
         and returns. Blocking until the user inputs. Doesn't require a return
@@ -53,9 +54,8 @@ class NonBlockingInput:
         :param text: Prompt text
         :return: the char
         """
-        self.put(text)
-        while not self.available():
-            pass
+        if text:
+            self.put(text)
         return self.get()
 
     @staticmethod
@@ -78,7 +78,7 @@ class NonBlockingInput:
             fd = sys.stdin.fileno()
             old_settings = termios.tcgetattr(fd)
             try:
-                tty.setraw(fd)
+                tty.setcbreak(fd)
                 ch = sys.stdin.read(1)
             finally:
                 termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
