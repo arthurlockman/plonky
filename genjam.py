@@ -332,8 +332,9 @@ class PhrasePopulation(Population):
         # in beats
         feedback_offset = 2
         population_stream = music21.stream.Stream()
-        for phrase in phrase_genomes:
-            phrase_stream = phrase_to_midi(phrase, measures, metadata)
+        last_phrase = phrase_genomes[0]
+        for pidx, phrase in enumerate(phrase_genomes):
+            phrase_stream = phrase_to_midi(phrase, measures, metadata, accompany=True)
             population_stream.append(phrase_stream)
 
             sp = music21.midi.realtime.StreamPlayer(phrase_stream)
@@ -347,35 +348,52 @@ class PhrasePopulation(Population):
             def get_feedback(verbose):
                 nonlocal raw_count, measure_idx, beat_idx, t0
                 beat_idx = raw_count // prescalar
-                beat_idx = max(0, beat_idx - feedback_offset)
+
+                # move feedback back by a fixed number of beats
+                if pidx > 0:
+                    beat_idx -= feedback_offset
+                else:
+                    beat_idx = max(0, beat_idx - feedback_offset)
+
+                # handle roll-over to feedback from end of last phrase
+                if beat_idx < 0:
+                    beat_idx = (metadata.time_signature.numerator * phrase.length) + beat_idx
+                    current_phrase = last_phrase
+                else:
+                    current_phrase = phrase
+
                 measure_idx = beat_idx // metadata.time_signature.numerator
 
+                # Non-Blocking check for input and assign fitness
                 i = nbinput.input()
                 if i == 'g':
+                    current_phrase.fitness += 1
+                    measures.genomes[current_phrase[measure_idx]].fitness += 1
                     if verbose:
-                        print("%2i +1" % measure_idx)
-                    phrase.fitness += 1
-                    measures.genomes[phrase[measure_idx]].fitness += 1
+                        print("%s %i %i +1" % (current_phrase, measure_idx, beat_idx))
                 elif i == 'b':
+                    current_phrase.fitness -= 1
+                    measures.genomes[current_phrase[measure_idx]].fitness -= 1
                     if verbose:
-                        print("%2i -1" % measure_idx)
-                    phrase.fitness -= 1
-                    measures.genomes[phrase[measure_idx]].fitness -= 1
+                        print("%s %i %i -1" % (current_phrase, measure_idx, beat_idx))
                 else:
                     if verbose:
-                        print("%2i" % measure_idx)
+                        print("%s %i %i" % (current_phrase, measure_idx, beat_idx))
 
                 raw_count += 1
 
             sp.play(busyFunction=get_feedback, busyArgs=False, busyWaitMilliseconds=wait_ms)
+            print('.', end='', flush=True)
+
+            last_phrase = phrase
 
 
 def main():
-    measure_pop_size = 64
+    measure_pop_size = 32
     smallest_note = 8
     # one measure of each chord for 4 beats each
-    chords = [MyChord('C3', 4, 'maj'), MyChord('A2', 4, 'min'), MyChord('F2', 4, 'maj'), MyChord('G2', 4, 'maj')]
-    metadata = Metadata('C', chords, '4/4', 100, smallest_note)
+    chords = [MyChord('C3', 4, 'maj7'), MyChord('A2', 4, 'min7'), MyChord('F2', 4, 'maj7'), MyChord('G2', 4, 'maj7')]
+    metadata = Metadata('C', chords, '4/4', 120, smallest_note)
     measures_per_phrase = 4
 
     phrase_genome_len = log(measure_pop_size, 2)
@@ -383,13 +401,13 @@ def main():
         sys.exit("Measure pop size must be power of 2. %i is not." % measure_pop_size)
     phrase_genome_len = int(phrase_genome_len)
 
-    measures = MeasurePopulation(64)
+    measures = MeasurePopulation(measure_pop_size)
     for _ in range(measures.size):
         m = Measure(length=metadata.notes_per_measure, number_size=4)
         m.initialize()
         measures.genomes.append(m)
 
-    phrases = PhrasePopulation(48)
+    phrases = PhrasePopulation(10)
     for _ in range(phrases.size):
         p = Phrase(length=measures_per_phrase, number_size=phrase_genome_len)
         p.initialize()
