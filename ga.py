@@ -22,9 +22,7 @@ def int_to_bit_str(value, num_bits):
 
 def run(current_population, mutate_method, fitness_method, *args):
     if fitness_method:
-        fitness_method(current_population.genomes, *args)
-    # for genome in current_population.genomes:
-    #     genome.assign_fitness(*args)
+        fitness_method(current_population, *args)
 
     selected_genomes = current_population.select()
     unmodified_population = deepcopy(current_population)
@@ -111,6 +109,14 @@ class Population:
     def select(self):
         ''' return a list of 2-tuples of genomes to be crossed '''
         raise NotImplemented()
+
+    def save(self, filename):
+        # save to file using numpy
+        genome_arr = []
+        for g in self.genomes:
+            genome_arr.append(g.as_numpy())
+        nparr = np.array(genome_arr)
+        np.savetxt(open(filename, 'wb'), nparr, fmt='%10d')
 
     def __repr__(self):
         r = ""

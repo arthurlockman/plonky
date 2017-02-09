@@ -42,6 +42,8 @@ class Metadata:
         self.tempo = tempo
         self.ms_per_beat = (60 * 1000 / tempo)
 
+    def __str__(self):
+        return '_'.join([str(self.key), str(self.time_signature.ratioString.replace('/', '-')), str(self.resolution), str(self.tempo) + 'bpm'])
 
 def phrase_to_midi(phrase, measure_population, metadata, accompany=False):
     measure_metadata = deepcopy(metadata)

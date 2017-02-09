@@ -1,3 +1,4 @@
+import os
 import time
 import sys
 from math import log
@@ -327,9 +328,11 @@ class PhrasePopulation(Population):
 
         return selected
 
+
     @staticmethod
-    def assign_fitness(phrase_genomes, measures, metadata):
+    def assign_fitness(phrase_pop, measures, metadata):
         # in beats
+        phrase_genomes = phrase_pop.genomes
         feedback_offset = 2
         population_stream = music21.stream.Stream()
         last_phrase = phrase_genomes[0]
@@ -376,6 +379,15 @@ class PhrasePopulation(Population):
                     measures.genomes[current_phrase[measure_idx]].fitness -= 1
                     if verbose:
                         print("%s %i %i -1" % (current_phrase, measure_idx, beat_idx))
+                elif i == 's':
+                    if not os.path.exists('saves'):
+                        os.mkdir("saves")
+                    t = time.time()
+                    filename_p = 'saves/phrases_' + str(metadata) + "_" + str(int(t)) + '.np'
+                    phrase_pop.save(filename_p)
+                    filename_m = 'saves/measures_' + str(metadata) + "_" + str(int(t)) + '.np'
+                    measures.save(filename_m)
+                    print("saved " + filename_m + " and " + filename_p)
                 else:
                     if verbose:
                         print("%s %i %i" % (current_phrase, measure_idx, beat_idx))
@@ -415,7 +427,7 @@ def main():
 
     t0 = time.time()
     for _ in range(10):
-        PhrasePopulation.assign_fitness(phrases.genomes, measures, metadata)
+        PhrasePopulation.assign_fitness(phrases, measures, metadata)
         print("Generation %i completed" % _)
 
     t1 = time.time()
