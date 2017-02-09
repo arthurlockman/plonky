@@ -388,6 +388,11 @@ class PhrasePopulation(Population):
                     filename_m = 'saves/measures_' + str(metadata) + "_" + str(int(t)) + '.np'
                     measures.save(filename_m)
                     print("saved " + filename_m + " and " + filename_p)
+                elif i == 'p':
+                    print(end='\n')
+                    input("Will pause at end of phrase. Press enter to resume...")
+                    print(end='\n')
+                    print("resuming.")
                 else:
                     if verbose:
                         print("%s %i %i" % (current_phrase, measure_idx, beat_idx))
@@ -431,12 +436,16 @@ def main():
         print("Generation %i completed" % _)
 
     t1 = time.time()
-    print("Training Time:", t1 - t0)
+    print("Feedback Time:", t1 - t0)
+    t0 = t1
 
     for _ in range(10):
         measures = run(measures, Measure.mutate, None)
         phrases = run(phrases, Phrase.mutate, PhrasePopulation.assign_fitness, measures, metadata)
 
+    t1 = time.time()
+    print("Breeding Time:", t1 - t0)
+    t0 = t1
 
 if __name__ == '__main__':
     main()
