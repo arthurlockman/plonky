@@ -153,7 +153,6 @@ class Measure(Genome):
         # do nothing to parents or baby1.
         # mutate baby2 in one of various ways
         mutation_func = np.random.choice(mutations, 1)[0]
-        print(mutation_func)
         mutation_func(baby2)
 
 
@@ -409,7 +408,12 @@ def main():
     measure_pop_size = 32
     smallest_note = 8
     # one measure of each chord for 4 beats each
-    chords = [MyChord('C3', 4, 'maj7'), MyChord('A2', 4, 'min7'), MyChord('F2', 4, 'maj7'), MyChord('G2', 4, 'maj7')]
+    chords = [MyChord('E3', 4, 'min7', [0, 3, 7, 14]),
+              MyChord('G3', 4, 'maj7', [0, 4, 7, 10]),
+              MyChord('D3', 4, 'maj7', [0, 3, 7, 10, 14]),
+              MyChord('D3', 4, 'maj7', [0, 3, 7, 10, 14]),
+              ]
+
     metadata = Metadata('C', chords, '4/4', 120, smallest_note)
     measures_per_phrase = 4
 
@@ -434,14 +438,18 @@ def main():
     for _ in range(10):
         PhrasePopulation.assign_fitness(phrases, measures, metadata)
         print("Generation %i completed" % _)
+        measures.save('measures_learning.np')
+        phrases.save('phrases_learning.np')
 
     t1 = time.time()
-    print("Feedback Time:", t1 - t0)
+    print("Leaning Time:", t1 - t0)
     t0 = t1
 
     for _ in range(10):
         measures = run(measures, Measure.mutate, None)
         phrases = run(phrases, Phrase.mutate, PhrasePopulation.assign_fitness, measures, metadata)
+        measures.save('measures_breeding.np')
+        phrases.save('phrases_breeding.np')
 
     t1 = time.time()
     print("Breeding Time:", t1 - t0)

@@ -5,8 +5,8 @@ from copy import deepcopy
 # Each chord shape has 14 possible things, mapping to genjam's 1-14
 
 chord_shapes = {
-    'maj': {'offsets': [0, 4, 7, 0, 4, 7, 0, 4, 7, 0, 4, 7, 0, 4]},
-    'min': {'offsets': [0, 3, 7, 0, 3, 7, 0, 3, 7, 0, 3, 7, 0, 3]},
+    'maj': {'offsets': [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24, 26, 28, 31]},
+    'maj': {'offsets': [0, 2, 3, 7, 9, 12, 14, 15, 19, 21, 24, 26, 27, 31]},
     'maj7': {'offsets': [0, 2, 4, 7, 9, 11, 12, 14, 16, 19, 21, 23, 24, 26]},
     '7': {'offsets': [0, 2, 4, 7, 9, 10, 12, 14, 16, 19, 21, 22, 24, 26]},
     'min7': {'offsets': [0, 2, 3, 5, 7, 10, 12, 14, 15, 17, 19, 22, 24, 25]},
@@ -24,15 +24,16 @@ chord_shapes = {
 
 class MyChord:
 
-    def __init__(self, root, beats, shape):
+    def __init__(self, root, beats, shape, accompaniment):
         self.root = root
         self.beats = beats
         self.shape = shape
+        self.accompaniment = accompaniment
 
 
 class Metadata:
 
-    def __init__(self, key, chords, time_signature, tempo, smallest_note):
+    def __init__(self, key, chords, time_signature, tempo, smallest_note, accompaniment=None):
         self.key = music21.key.Key(key)
         self.chords = chords
         self.time_signature = music21.meter.TimeSignature(time_signature)
@@ -41,9 +42,11 @@ class Metadata:
         self.notes_per_measure = int(smallest_note * self.time_signature.numerator / self.time_signature.denominator)
         self.tempo = tempo
         self.ms_per_beat = (60 * 1000 / tempo)
+        self.accompaniment = accompaniment
 
     def __str__(self):
         return '_'.join([str(self.key), str(self.time_signature.ratioString.replace('/', '-')), str(self.resolution), str(self.tempo) + 'bpm'])
+
 
 def phrase_to_midi(phrase, measure_population, metadata, accompany=False):
     measure_metadata = deepcopy(metadata)
@@ -67,8 +70,8 @@ def phrase_to_midi(phrase, measure_population, metadata, accompany=False):
 
 
 def measure_to_midi(measure, metadata, accompany=False):
-    s = music21.stream.Stream()
-    s.append(music21.tempo.MetronomeMark(number=metadata.tempo))
+    measure_stream = music21.stream.Stream()
+    measure_stream.append(music21.tempo.MetronomeMark(number=metadata.tempo))
 
     # do midi conversion
     chord_idx = 0
@@ -81,32 +84,30 @@ def measure_to_midi(measure, metadata, accompany=False):
 
         if accompany and idx == metadata.notes_per_beat:
             root = music21.note.Note(current_chord_info.root)
-            root.transpose(-12)
-            s.insert(root)
-            third = music21.note.Note(current_chord_info.root)
-            third.transpose(-7)
-            s.insert(third)
+            midi_numbers = [root.pitch.midi + offset for offset in current_chord_info.accompaniment]
+            chord = music21.chord.Chord(midi_numbers)
+            measure_stream.insert(chord)
 
         if genjam_e == 15:
             # hold the note
-            if len(s.notes) == 0:
+            if len(measure_stream.notes) == 0:
                 # rest if it's the first note
-                s.append(music21.note.Rest(quarterLength=metadata.resolution))
+                measure_stream.append(music21.note.Rest(quarterLength=metadata.resolution))
             else:
                 # extend previous note or rest
-                s.notesAndRests[-1].duration.quarterLength += metadata.resolution
+                measure_stream.notesAndRests[-1].duration.quarterLength += metadata.resolution
         elif genjam_e == 0:
-            s.append(music21.note.Rest(quarterLength=metadata.resolution))
+            measure_stream.append(music21.note.Rest(quarterLength=metadata.resolution))
         else:
             new_note = music21.note.Note(current_chord_info.root)
             new_note.duration.quarterLength = metadata.resolution
             tonic_midi_pitch = new_note.pitch.midi
             new_note.pitch.midi = tonic_midi_pitch + note_chord_offsets[genjam_e - 1]
-            s.append(new_note)
+            measure_stream.append(new_note)
 
         idx += 1
         if idx == genes_per_chord:
             idx = 0
             chord_idx += 1
 
-    return s, idx * metadata.resolution, chord_idx
+    return measure_stream, idx * metadata.resolution, chord_idx
