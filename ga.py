@@ -2,6 +2,7 @@ import sys
 from bitstring import BitStream, CreationError
 from copy import deepcopy
 import numpy as np
+import os
 
 
 def uint_to_bit_str(value, num_bits):
@@ -116,7 +117,9 @@ class Population:
         for g in self.genomes:
             genome_arr.append(g.as_numpy())
         nparr = np.array(genome_arr)
-        np.savetxt(open(filename, 'wb'), nparr, fmt='%10d')
+        if not os.path.exists('saves'):
+            os.mkdir("saves")
+        np.savetxt(open('saves/' + filename, 'wb'), nparr, fmt='%10d')
 
     def __repr__(self):
         r = ""

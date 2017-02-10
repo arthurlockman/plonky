@@ -379,12 +379,10 @@ class PhrasePopulation(Population):
                     if verbose:
                         print("%s %i %i -1" % (current_phrase, measure_idx, beat_idx))
                 elif i == 's':
-                    if not os.path.exists('saves'):
-                        os.mkdir("saves")
                     t = time.time()
-                    filename_p = 'saves/phrases_' + str(metadata) + "_" + str(int(t)) + '.np'
+                    filename_p = 'phrases_' + str(metadata) + "_" + str(int(t)) + '.np'
                     phrase_pop.save(filename_p)
-                    filename_m = 'saves/measures_' + str(metadata) + "_" + str(int(t)) + '.np'
+                    filename_m = 'measures_' + str(metadata) + "_" + str(int(t)) + '.np'
                     measures.save(filename_m)
                     print("saved " + filename_m + " and " + filename_p)
                 elif i == 'p':
@@ -435,7 +433,7 @@ def main():
         phrases.genomes.append(p)
 
     t0 = time.time()
-    for _ in range(10):
+    for _ in range(4):
         PhrasePopulation.assign_fitness(phrases, measures, metadata)
         print("Generation %i completed" % _)
         measures.save('measures_learning.np')
