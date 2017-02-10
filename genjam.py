@@ -408,8 +408,8 @@ def main():
     # one measure of each chord for 4 beats each
     chords = [MyChord('E3', 4, 'min7', [0, 3, 7, 14]),
               MyChord('G3', 4, 'maj7', [0, 4, 7, 10]),
-              MyChord('D3', 4, 'maj7', [0, 3, 7, 10, 14]),
-              MyChord('D3', 4, 'maj7', [0, 3, 7, 10, 14]),
+              MyChord('D3', 4, 'maj7', [0, 3, 7, 14]),
+              MyChord('D3', 4, 'maj7', [0, 3, 7, 14]),
               ]
 
     metadata = Metadata('C', chords, '4/4', 120, smallest_note)
