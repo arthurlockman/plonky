@@ -1,4 +1,3 @@
-import os
 import time
 import sys
 from math import log
@@ -33,9 +32,9 @@ class Measure(Genome):
 
     def cross(self, other_genome):
         bit_idx = np.random.randint(1, self.length * self.number_size - 1)
-        baby1 = Phrase(self.length, self.number_size)
+        baby1 = Measure(self.length, self.number_size)
         baby1.data = self.data[:bit_idx] + other_genome.data[bit_idx:]
-        baby2 = Phrase(self.length, self.number_size)
+        baby2 = Measure(self.length, self.number_size)
         baby2.data = other_genome.data[:bit_idx] + self.data[bit_idx:]
         return baby1, baby2
 
@@ -298,12 +297,20 @@ class MeasurePopulation(Population):
         np.random.shuffle(self.genomes)
         selected = []
 
-        for i in range(0, self.size, 4):
+        for i in range(0, self.size - 4, 4):
             # four random possible parents
             possible_parents = sorted(self.genomes[i:i+4], key=lambda g: g.fitness)
             # pick the best two
             parents = possible_parents[2:]
             selected.append(tuple(parents))
+
+        # make sure pop size stays constant
+        while len(selected) < self.size:
+            rand_idx1 = np.random.randint(self.size)
+            random_genome1 = self.genomes[rand_idx1]
+            rand_idx2 = np.random.randint(self.size)
+            random_genome2 = self.genomes[rand_idx2]
+            selected.append((random_genome1, random_genome2))
 
         return selected
 
@@ -318,12 +325,21 @@ class PhrasePopulation(Population):
         np.random.shuffle(self.genomes)
         selected = []
 
-        for i in range(0, self.size, 4):
+        for i in range(0, self.size - 4, 4):
             # four random possible parents
             possible_parents = sorted(self.genomes[i:i+4], key=lambda g: g.fitness)
             # pick the best two
             parents = possible_parents[2:]
             selected.append(tuple(parents))
+
+
+        # make sure pop size stays constant
+        while len(selected) < self.size:
+            rand_idx1 = np.random.randint(self.size)
+            random_genome1 = self.genomes[rand_idx1]
+            rand_idx2 = np.random.randint(self.size)
+            random_genome2 = self.genomes[rand_idx2]
+            selected.append((random_genome1, random_genome2))
 
         return selected
 
@@ -403,6 +419,11 @@ class PhrasePopulation(Population):
 
 
 def main():
+
+    if '--debug' in sys.argv:
+        print("waiting 10 seconds so you can attach a debugger...")
+        time.sleep(10)
+
     measure_pop_size = 32
     smallest_note = 8
     # one measure of each chord for 4 beats each
@@ -412,7 +433,7 @@ def main():
               MyChord('D3', 4, 'maj7', [0, 3, 7, 14]),
               ]
 
-    metadata = Metadata('C', chords, '4/4', 120, smallest_note)
+    metadata = Metadata('C', chords, '4/4', 140, smallest_note)
     measures_per_phrase = 4
 
     phrase_genome_len = log(measure_pop_size, 2)
@@ -421,37 +442,34 @@ def main():
     phrase_genome_len = int(phrase_genome_len)
 
     measures = MeasurePopulation(measure_pop_size)
-    for _ in range(measures.size):
+    for itr in range(measures.size):
         m = Measure(length=metadata.notes_per_measure, number_size=4)
         m.initialize()
         measures.genomes.append(m)
 
-    phrases = PhrasePopulation(10)
-    for _ in range(phrases.size):
+    phrases = PhrasePopulation(48)
+    for itr in range(phrases.size):
         p = Phrase(length=measures_per_phrase, number_size=phrase_genome_len)
         p.initialize()
         phrases.genomes.append(p)
 
     t0 = time.time()
-    for _ in range(4):
-        PhrasePopulation.assign_fitness(phrases, measures, metadata)
-        print("Generation %i completed" % _)
-        measures.save('measures_learning.np')
-        phrases.save('phrases_learning.np')
+    for itr in range(100):
+        if itr < 4:
+            PhrasePopulation.assign_fitness(phrases, measures, metadata)
+        else:
+            measures = run(measures, Measure.mutate, None)
+            phrases = run(phrases, Phrase.mutate, PhrasePopulation.assign_fitness, measures, metadata)
 
-    t1 = time.time()
-    print("Leaning Time:", t1 - t0)
-    t0 = t1
-
-    for _ in range(10):
-        measures = run(measures, Measure.mutate, None)
-        phrases = run(phrases, Phrase.mutate, PhrasePopulation.assign_fitness, measures, metadata)
         measures.save('measures_breeding.np')
         phrases.save('phrases_breeding.np')
+        print("Generation %i completed" % itr)
 
     t1 = time.time()
-    print("Breeding Time:", t1 - t0)
+    print("Training Time:", t1 - t0)
     t0 = t1
+
+    print("Done. (hit any key to exit)")
 
 if __name__ == '__main__':
     main()
