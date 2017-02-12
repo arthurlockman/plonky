@@ -1,3 +1,4 @@
+import os
 import time
 import sys
 from math import log
@@ -305,7 +306,7 @@ class MeasurePopulation(Population):
             selected.append(tuple(parents))
 
         # make sure pop size stays constant
-        while len(selected) < self.size:
+        while len(selected) < self.size/4:
             rand_idx1 = np.random.randint(self.size)
             random_genome1 = self.genomes[rand_idx1]
             rand_idx2 = np.random.randint(self.size)
@@ -334,7 +335,7 @@ class PhrasePopulation(Population):
 
 
         # make sure pop size stays constant
-        while len(selected) < self.size:
+        while len(selected) < self.size/4:
             rand_idx1 = np.random.randint(self.size)
             random_genome1 = self.genomes[rand_idx1]
             rand_idx2 = np.random.randint(self.size)
@@ -343,6 +344,14 @@ class PhrasePopulation(Population):
 
         return selected
 
+
+    @staticmethod
+    def assign_random_fitness(phrase_pop, measures, metadata):
+        phrase_genomes = phrase_pop.genomes
+        for pidx, phrase in enumerate(phrase_genomes):
+            phrase.fitness += np.random.randint(-2, 2)
+            for measure_idx in phrase:
+                measures.genomes[measure_idx].fitness += np.random.randint(-2, 2)
 
     @staticmethod
     def assign_fitness(phrase_pop, measures, metadata):
@@ -453,16 +462,24 @@ def main():
         p.initialize()
         phrases.genomes.append(p)
 
+    if '--resume' in sys.argv:
+        print("Loading measure & phrase populations from files")
+        measures.load('measures.np')
+        phrases.load('phrases.np')
+
     t0 = time.time()
     for itr in range(100):
+        print(len(phrases.genomes), len(measures.genomes))
         if itr < 4:
-            PhrasePopulation.assign_fitness(phrases, measures, metadata)
+            # PhrasePopulation.assign_fitness(phrases, measures, metadata)
+            PhrasePopulation.assign_random_fitness(phrases, measures, metadata)
         else:
             measures = run(measures, Measure.mutate, None)
-            phrases = run(phrases, Phrase.mutate, PhrasePopulation.assign_fitness, measures, metadata)
+            # phrases = run(phrases, Phrase.mutate, PhrasePopulation.assign_fitness, measures, metadata)
+            phrases = run(phrases, Phrase.mutate, PhrasePopulation.assign_random_fitness, measures, metadata)
 
-        measures.save('measures_breeding.np')
-        phrases.save('phrases_breeding.np')
+        measures.save('measures.np')
+        phrases.save('phrases.np')
         print("Generation %i completed" % itr)
 
     t1 = time.time()

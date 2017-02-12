@@ -1,4 +1,5 @@
 import sys
+import csv
 from bitstring import BitStream, CreationError
 from copy import deepcopy
 import numpy as np
@@ -111,15 +112,27 @@ class Population:
         ''' return a list of 2-tuples of genomes to be crossed '''
         raise NotImplemented()
 
+    def load(self, filename):
+        if not os.path.exists('saves/' + filename):
+            print("No save found")
+            return
+        with open('saves/' + filename, 'r') as csvfile:
+            reader = csv.reader(csvfile, delimiter=' ')
+            for idx, row in enumerate(reader):
+                for i, gene in enumerate(row[:-1]):
+                    g = int(gene)
+                    self.genomes[idx][i] = g
+                self.genomes[idx].fitness = int(row[-1])
+
     def save(self, filename):
-        # save to file using numpy
-        genome_arr = []
-        for g in self.genomes:
-            genome_arr.append(g.as_numpy())
-        nparr = np.array(genome_arr)
         if not os.path.exists('saves'):
             os.mkdir("saves")
-        np.savetxt(open('saves/' + filename, 'wb'), nparr, fmt='%10d')
+        with open('saves/' + filename, 'w') as csvfile:
+            csvfile.truncate()
+            writer = csv.writer(csvfile, delimiter=' ')
+            for idx, g in enumerate(self.genomes):
+                g_arr = list(g.as_numpy()) + [g.fitness]
+                writer.writerow(g_arr)
 
     def __repr__(self):
         r = ""
