@@ -471,12 +471,12 @@ def main():
     for itr in range(100):
         print(len(phrases.genomes), len(measures.genomes))
         if itr < 4:
-            # PhrasePopulation.assign_fitness(phrases, measures, metadata)
-            PhrasePopulation.assign_random_fitness(phrases, measures, metadata)
+            PhrasePopulation.assign_fitness(phrases, measures, metadata)
+            # PhrasePopulation.assign_random_fitness(phrases, measures, metadata)
         else:
             measures = run(measures, Measure.mutate, None)
-            # phrases = run(phrases, Phrase.mutate, PhrasePopulation.assign_fitness, measures, metadata)
-            phrases = run(phrases, Phrase.mutate, PhrasePopulation.assign_random_fitness, measures, metadata)
+            phrases = run(phrases, Phrase.mutate, PhrasePopulation.assign_fitness, measures, metadata)
+            # phrases = run(phrases, Phrase.mutate, PhrasePopulation.assign_random_fitness, measures, metadata)
 
         measures.save('measures.np')
         phrases.save('phrases.np')

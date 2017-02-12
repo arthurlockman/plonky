@@ -1,4 +1,5 @@
 import music21
+import numpy as np
 from copy import deepcopy
 
 # Each number is midi pitch relative to the tonic of the chord
@@ -86,6 +87,7 @@ def measure_to_midi(measure, metadata, accompany=False):
             root = music21.note.Note(current_chord_info.root)
             midi_numbers = [root.pitch.midi + offset for offset in current_chord_info.accompaniment]
             chord = music21.chord.Chord(midi_numbers)
+            chord.volume.velocity = 8
             measure_stream.insert(chord)
 
         if genjam_e == 15:
@@ -103,6 +105,8 @@ def measure_to_midi(measure, metadata, accompany=False):
             new_note.duration.quarterLength = metadata.resolution
             tonic_midi_pitch = new_note.pitch.midi
             new_note.pitch.midi = tonic_midi_pitch + note_chord_offsets[genjam_e - 1]
+            # Here is where you'd account for velocity
+            new_note.volume.velocity = 127
             measure_stream.append(new_note)
 
         idx += 1
