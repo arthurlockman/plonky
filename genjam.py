@@ -1,13 +1,15 @@
-import os
-import time
 import sys
+import time
 from math import log
+
 import music21
-from converter import Metadata, phrase_to_midi, MyChord
 import numpy as np
 from bitstring import BitStream
+
+from converter import Metadata, phrase_to_midi, MyChord
 from ga import Genome, Population, run, uint_to_bit_str
 from non_blocking_input import NonBlockingInput
+from synth_wrapper import get_virtual_midi_port, send_stream_to_virtual_midi
 
 nbinput = NonBlockingInput()
 
@@ -358,73 +360,73 @@ class PhrasePopulation(Population):
         # in beats
         phrase_genomes = phrase_pop.genomes
         feedback_offset = 2
+        population_lead_part = music21.stream.Part()
+        population_backing_part = music21.stream.Part()
+        population_lead_part.append(music21.instrument.Trumpet())
+        population_backing_part.append(music21.instrument.Piano())
+        for idx, phrase in enumerate(phrase_genomes):
+            phrase_lead, phrase_backing = phrase_to_midi(phrase, measures, metadata, accompany=True)
+            population_lead_part.append(phrase_lead)
+            population_backing_part.append(phrase_backing)
+
+        beat_idx = 0
+        measure_idx = 0
+        prescalar = 8
+        raw_count = 0
+        measures_per_phrase = phrase_genomes[0].length
+        beats_per_measure = metadata.time_signature.numerator
+        beats_per_phrase = beats_per_measure * measures_per_phrase
+
+        def get_feedback(verbose):
+            nonlocal raw_count, measure_idx, beat_idx, prescalar, beats_per_measure
+            beat_idx = raw_count // prescalar
+
+            # move feedback back by a fixed number of beats
+            beat_idx = max(0, beat_idx - feedback_offset)
+
+            phrase_idx = beat_idx // beats_per_phrase
+            current_phrase = phrase_genomes[phrase_idx]
+            measure_idx = (beat_idx % beats_per_phrase) // beats_per_measure
+            current_measure = measures.genomes[current_phrase[measure_idx]]
+
+            # Non-Blocking check for input and assign fitness
+            i = nbinput.input()
+            if i == 'g':
+                current_phrase.fitness += 1
+                current_measure.fitness += 1
+                if verbose:
+                    print("%s %i %i +1" % (current_phrase, measure_idx, beat_idx))
+            elif i == 'b':
+                current_phrase.fitness -= 1
+                current_measure.fitness -= 1
+                if verbose:
+                    print("%s %i %i -1" % (current_phrase, measure_idx, beat_idx))
+            elif i == 's':
+                t = time.time()
+                filename_p = 'phrases_' + str(metadata) + "_" + str(int(t)) + '.np'
+                phrase_pop.save(filename_p)
+                filename_m = 'measures_' + str(metadata) + "_" + str(int(t)) + '.np'
+                measures.save(filename_m)
+                print("saved " + filename_m + " and " + filename_p)
+            elif i == 'p':
+                print(end='\n')
+                input("Will pause at end of phrase. Press enter to resume...")
+                print(end='\n')
+                print("resuming.")
+            else:
+                if verbose:
+                    print("%i %i %i" % (phrase_idx, measure_idx, beat_idx))
+
+            raw_count += 1
+
+        wait_ms = metadata.ms_per_beat / prescalar
         population_stream = music21.stream.Stream()
-        last_phrase = phrase_genomes[0]
-        for pidx, phrase in enumerate(phrase_genomes):
-            phrase_stream = phrase_to_midi(phrase, measures, metadata, accompany=True)
-            population_stream.append(phrase_stream)
-
-            sp = music21.midi.realtime.StreamPlayer(phrase_stream)
-            beat_idx = 0
-            measure_idx = 0
-            t0 = time.time()
-            prescalar = 8
-            raw_count = 0
-            wait_ms = metadata.ms_per_beat / prescalar
-
-            def get_feedback(verbose):
-                nonlocal raw_count, measure_idx, beat_idx, t0
-                beat_idx = raw_count // prescalar
-
-                # move feedback back by a fixed number of beats
-                if pidx > 0:
-                    beat_idx -= feedback_offset
-                else:
-                    beat_idx = max(0, beat_idx - feedback_offset)
-
-                # handle roll-over to feedback from end of last phrase
-                if beat_idx < 0:
-                    beat_idx = (metadata.time_signature.numerator * phrase.length) + beat_idx
-                    current_phrase = last_phrase
-                else:
-                    current_phrase = phrase
-
-                measure_idx = beat_idx // metadata.time_signature.numerator
-
-                # Non-Blocking check for input and assign fitness
-                i = nbinput.input()
-                if i == 'g':
-                    current_phrase.fitness += 1
-                    measures.genomes[current_phrase[measure_idx]].fitness += 1
-                    if verbose:
-                        print("%s %i %i +1" % (current_phrase, measure_idx, beat_idx))
-                elif i == 'b':
-                    current_phrase.fitness -= 1
-                    measures.genomes[current_phrase[measure_idx]].fitness -= 1
-                    if verbose:
-                        print("%s %i %i -1" % (current_phrase, measure_idx, beat_idx))
-                elif i == 's':
-                    t = time.time()
-                    filename_p = 'phrases_' + str(metadata) + "_" + str(int(t)) + '.np'
-                    phrase_pop.save(filename_p)
-                    filename_m = 'measures_' + str(metadata) + "_" + str(int(t)) + '.np'
-                    measures.save(filename_m)
-                    print("saved " + filename_m + " and " + filename_p)
-                elif i == 'p':
-                    print(end='\n')
-                    input("Will pause at end of phrase. Press enter to resume...")
-                    print(end='\n')
-                    print("resuming.")
-                else:
-                    if verbose:
-                        print("%s %i %i" % (current_phrase, measure_idx, beat_idx))
-
-                raw_count += 1
-
-            sp.play(busyFunction=get_feedback, busyArgs=False, busyWaitMilliseconds=wait_ms)
-            print('.', end='', flush=True)
-
-            last_phrase = phrase
+        population_stream.append(population_lead_part)
+        population_stream.append(population_backing_part)
+        sp = music21.midi.realtime.StreamPlayer(population_stream)
+        sp.play(busyFunction=get_feedback, busyArgs=False, busyWaitMilliseconds=wait_ms)
+        # send_stream_to_virtual_midi(metadata.midi_out, phrase_stream, metadata)
+        print('.', end='', flush=True)
 
 
 def main():
@@ -442,8 +444,11 @@ def main():
               MyChord('D3', 4, 'maj7', [0, 3, 7, 14]),
               ]
 
-    metadata = Metadata('C', chords, '4/4', 140, smallest_note)
+    metadata = Metadata('C', chords, '4/4', 360, smallest_note)
     measures_per_phrase = 4
+    metadata.midi_out = get_virtual_midi_port()
+    if not metadata.midi_out:
+        return
 
     phrase_genome_len = log(measure_pop_size, 2)
     if not phrase_genome_len.is_integer():
@@ -456,7 +461,7 @@ def main():
         m.initialize()
         measures.genomes.append(m)
 
-    phrases = PhrasePopulation(48)
+    phrases = PhrasePopulation(24)
     for itr in range(phrases.size):
         p = Phrase(length=measures_per_phrase, number_size=phrase_genome_len)
         p.initialize()
@@ -469,7 +474,10 @@ def main():
 
     t0 = time.time()
     for itr in range(100):
-        print(len(phrases.genomes), len(measures.genomes))
+
+        measures.save('in_progress_measures.np')
+        phrases.save('in_progress_phrases.np')
+
         if itr < 4:
             PhrasePopulation.assign_fitness(phrases, measures, metadata)
             # PhrasePopulation.assign_random_fitness(phrases, measures, metadata)

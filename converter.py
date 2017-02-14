@@ -1,5 +1,6 @@
 import music21
 import numpy as np
+import time
 from copy import deepcopy
 
 # Each number is midi pitch relative to the tonic of the chord
@@ -46,33 +47,37 @@ class Metadata:
         self.accompaniment = accompaniment
 
     def __str__(self):
-        return '_'.join([str(self.key), str(self.time_signature.ratioString.replace('/', '-')), str(self.resolution), str(self.tempo) + 'bpm'])
+        return '_'.join([str(self.key), str(self.time_signature.ratioString.replace('/', '-')),
+                        str(self.resolution), str(self.tempo) + 'bpm'])
 
 
 def phrase_to_midi(phrase, measure_population, metadata, accompany=False):
     measure_metadata = deepcopy(metadata)
 
-    phrase_stream = music21.stream.Stream()
-    phrase_stream.append(music21.tempo.MetronomeMark(number=metadata.tempo))
+    phrase_lead_part = music21.stream.Part()
+    phrase_backing_part = music21.stream.Part()
+    phrase_lead_part.append(music21.tempo.MetronomeMark(number=metadata.tempo))
+    phrase_backing_part.append(music21.tempo.MetronomeMark(number=metadata.tempo))
+
     for measure in phrase:
         measure = measure_population.genomes[measure]
-        measure_stream, beat_idx, chord_idx = measure_to_midi(measure, measure_metadata, accompany=accompany)
-
-        # remove the MetronomeMark from the measure_stream
-        measure_stream = measure_stream[1:]
-        phrase_stream.append(measure_stream)
+        measure_lead_part, measure_backing_part, beat_idx, chord_idx = measure_to_midi(measure,
+                                                                                       measure_metadata,
+                                                                                       accompany=accompany)
+        phrase_lead_part.append(measure_lead_part)
+        phrase_backing_part.append(measure_backing_part)
 
         measure_metadata.chords = measure_metadata.chords[chord_idx:]
         if len(measure_metadata.chords) == 0:
             measure_metadata.chords = deepcopy(metadata.chords)
         measure_metadata.chords[0].beats -= beat_idx
 
-    return phrase_stream
+    return phrase_lead_part, phrase_backing_part
 
 
 def measure_to_midi(measure, metadata, accompany=False):
-    measure_stream = music21.stream.Stream()
-    measure_stream.append(music21.tempo.MetronomeMark(number=metadata.tempo))
+    lead_part = music21.stream.Part()
+    backing_part = music21.stream.Part()
 
     # do midi conversion
     chord_idx = 0
@@ -87,19 +92,20 @@ def measure_to_midi(measure, metadata, accompany=False):
             root = music21.note.Note(current_chord_info.root)
             midi_numbers = [root.pitch.midi + offset for offset in current_chord_info.accompaniment]
             chord = music21.chord.Chord(midi_numbers)
-            chord.volume.velocity = 8
-            measure_stream.insert(chord)
+            chord.quarterLength = current_chord_info.beats
+            chord.volume.velocity = 6
+            backing_part.insert(chord)
 
         if genjam_e == 15:
             # hold the note
-            if len(measure_stream.notes) == 0:
+            if len(lead_part.notes) == 0:
                 # rest if it's the first note
-                measure_stream.append(music21.note.Rest(quarterLength=metadata.resolution))
+                lead_part.append(music21.note.Rest(quarterLength=metadata.resolution))
             else:
                 # extend previous note or rest
-                measure_stream.notesAndRests[-1].duration.quarterLength += metadata.resolution
+                lead_part.notesAndRests[-1].duration.quarterLength += metadata.resolution
         elif genjam_e == 0:
-            measure_stream.append(music21.note.Rest(quarterLength=metadata.resolution))
+            lead_part.append(music21.note.Rest(quarterLength=metadata.resolution))
         else:
             new_note = music21.note.Note(current_chord_info.root)
             new_note.duration.quarterLength = metadata.resolution
@@ -107,11 +113,11 @@ def measure_to_midi(measure, metadata, accompany=False):
             new_note.pitch.midi = tonic_midi_pitch + note_chord_offsets[genjam_e - 1]
             # Here is where you'd account for velocity
             new_note.volume.velocity = 127
-            measure_stream.append(new_note)
+            lead_part.append(new_note)
 
         idx += 1
         if idx == genes_per_chord:
             idx = 0
             chord_idx += 1
 
-    return measure_stream, idx * metadata.resolution, chord_idx
+    return lead_part, backing_part, idx * metadata.resolution, chord_idx
