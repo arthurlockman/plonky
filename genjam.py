@@ -410,7 +410,8 @@ class PhrasePopulation(Population):
                 print("saved " + filename_m + " and " + filename_p)
             elif i == 'p':
                 print(end='\n')
-                input("Will pause at end of phrase. Press enter to resume...")
+                input("Will pause at end generation. No feedback will be given for the rest of this generation. \
+                      Press enter to resume...")
                 print(end='\n')
                 print("resuming.")
             else:
@@ -426,7 +427,6 @@ class PhrasePopulation(Population):
         sp = music21.midi.realtime.StreamPlayer(population_stream)
         sp.play(busyFunction=get_feedback, busyArgs=False, busyWaitMilliseconds=wait_ms)
         # send_stream_to_virtual_midi(metadata.midi_out, phrase_stream, metadata)
-        print('.', end='', flush=True)
 
 
 def main():
@@ -479,7 +479,8 @@ def main():
         measures.save('in_progress_measures.np')
         phrases.save('in_progress_phrases.np')
 
-        if itr < 4:
+        # occasionall, don't use genetic operators and just build up fitness scores
+        if itr < 3 or itr % 5 == 0:
             PhrasePopulation.assign_fitness(phrases, measures, metadata)
             # PhrasePopulation.assign_random_fitness(phrases, measures, metadata)
         else:
