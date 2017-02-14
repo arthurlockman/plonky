@@ -51,7 +51,7 @@ class Metadata:
                         str(self.resolution), str(self.tempo) + 'bpm'])
 
 
-def phrase_to_midi(phrase, measure_population, metadata, accompany=False):
+def phrase_to_parts(phrase, measure_population, metadata, accompany=False):
     measure_metadata = deepcopy(metadata)
 
     phrase_lead_part = music21.stream.Part()
@@ -61,9 +61,9 @@ def phrase_to_midi(phrase, measure_population, metadata, accompany=False):
 
     for measure in phrase:
         measure = measure_population.genomes[measure]
-        measure_lead_part, measure_backing_part, beat_idx, chord_idx = measure_to_midi(measure,
-                                                                                       measure_metadata,
-                                                                                       accompany=accompany)
+        measure_lead_part, measure_backing_part, beat_idx, chord_idx = measure_to_parts(measure,
+                                                                                        measure_metadata,
+                                                                                        accompany=accompany)
         phrase_lead_part.append(measure_lead_part)
         phrase_backing_part.append(measure_backing_part)
 
@@ -75,7 +75,7 @@ def phrase_to_midi(phrase, measure_population, metadata, accompany=False):
     return phrase_lead_part, phrase_backing_part
 
 
-def measure_to_midi(measure, metadata, accompany=False):
+def measure_to_parts(measure, metadata, accompany=False):
     lead_part = music21.stream.Part()
     backing_part = music21.stream.Part()
 

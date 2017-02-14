@@ -1,6 +1,6 @@
 import unittest
 from copy import deepcopy
-from converter import measure_to_midi, phrase_to_midi, chord_shapes, MyChord, Metadata
+from converter import measure_to_parts, phrase_to_parts, chord_shapes, MyChord, Metadata
 from genjam import Measure, Phrase, PhrasePopulation, MeasurePopulation
 import music21
 
@@ -253,7 +253,7 @@ class ConverterTests(unittest.TestCase):
         for i in range(200):
             m = Measure(metadata.notes_per_measure, 4)
             m.initialize()
-            stream, _, _ = measure_to_midi(m, metadata)
+            stream, _, _ = measure_to_parts(m, metadata)
 
             measure_len = 0
             for event in stream:

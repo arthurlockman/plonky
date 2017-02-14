@@ -1,4 +1,5 @@
 import sys
+import os
 import time
 from math import log
 
@@ -6,7 +7,7 @@ import music21
 import numpy as np
 from bitstring import BitStream
 
-from converter import Metadata, phrase_to_midi, MyChord
+from converter import Metadata, phrase_to_parts, MyChord
 from ga import Genome, Population, run, uint_to_bit_str
 from non_blocking_input import NonBlockingInput
 from synth_wrapper import get_virtual_midi_port, send_stream_to_virtual_midi
@@ -358,10 +359,10 @@ class PhrasePopulation(Population):
     @staticmethod
     def assign_fitness_penalize_jumps(phrase_pop, measures, metadata):
         phrase_genomes = phrase_pop.genomes
+        last_note = None
         for pidx, phrase in enumerate(phrase_genomes):
             for measure_idx in phrase:
                 measure = measures.genomes[measure_idx]
-                last_note = None
                 for note in measure:
                     if 0 < note < 15:
                         if not last_note:
@@ -381,7 +382,7 @@ class PhrasePopulation(Population):
         population_lead_part.append(music21.instrument.Trumpet())
         population_backing_part.append(music21.instrument.Piano())
         for idx, phrase in enumerate(phrase_genomes):
-            phrase_lead, phrase_backing = phrase_to_midi(phrase, measures, metadata, accompany=True)
+            phrase_lead, phrase_backing = phrase_to_parts(phrase, measures, metadata, accompany=True)
             population_lead_part.append(phrase_lead)
             population_backing_part.append(phrase_backing)
 
@@ -444,6 +445,40 @@ class PhrasePopulation(Population):
         sp.play(busyFunction=get_feedback, busyArgs=False, busyWaitMilliseconds=wait_ms)
         # send_stream_to_virtual_midi(metadata.midi_out, phrase_stream, metadata)
 
+    def render_midi(self, measures, metadata, filename):
+        population_lead_part = music21.stream.Part()
+        population_backing_part = music21.stream.Part()
+        population_lead_part.append(music21.instrument.Trumpet())
+        population_backing_part.append(music21.instrument.Piano())
+        for phrase in self.genomes:
+            phrase_lead, phrase_backing = phrase_to_parts(phrase, measures, metadata, accompany=True)
+            population_lead_part.append(phrase_lead)
+            population_backing_part.append(phrase_backing)
+        population_stream = music21.stream.Stream()
+        population_stream.append(population_lead_part)
+        population_stream.append(population_backing_part)
+
+        midi_file = music21.midi.translate.streamToMidiFile(population_stream)
+        midi_file.open(filename, 'wb')
+        midi_file.write()
+        midi_file.close()
+
+    def play(self, measures, metadata):
+        population_lead_part = music21.stream.Part()
+        population_backing_part = music21.stream.Part()
+        population_lead_part.append(music21.instrument.Trumpet())
+        population_backing_part.append(music21.instrument.Piano())
+        for phrase in self.genomes:
+            phrase_lead, phrase_backing = phrase_to_parts(phrase, measures, metadata, accompany=True)
+            population_lead_part.append(phrase_lead)
+            population_backing_part.append(phrase_backing)
+        population_stream = music21.stream.Stream()
+        population_stream.append(population_lead_part)
+        population_stream.append(population_backing_part)
+
+        sp = music21.midi.realtime.StreamPlayer(population_stream)
+        sp.play()
+
 
 def main():
 
@@ -487,6 +522,15 @@ def main():
         print("Loading measure & phrase populations from files")
         measures.load('measures.np')
         phrases.load('phrases.np')
+
+    if '--render' in sys.argv:
+        if os.path.exists('output.mid'):
+            if input("overwrite output.mid? [y/n]") == 'y':
+                phrases.render_midi(measures, metadata, 'output.mid')
+            else:
+                print("Ignoring.")
+        else:
+            phrases.render_midi(measures, metadata, 'output.mid')
 
     last_time = time.time()
     t0 = last_time

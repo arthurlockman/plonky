@@ -1,6 +1,6 @@
 import music21
 
-from converter import Metadata, phrase_to_midi, measure_to_midi, MyChord
+from converter import Metadata, phrase_to_parts, measure_to_parts, MyChord
 from genjam import MeasurePopulation, Measure, Phrase
 
 
@@ -25,7 +25,7 @@ def main():
     for i in range(p.length):
         p[i] = 0
 
-    stream = phrase_to_midi(p, measures, metadata)
+    stream = phrase_to_parts(p, measures, metadata)
     # stream, _, _ = measure_to_midi(measures.genomes[0], metadata)
     sp = music21.midi.realtime.StreamPlayer(stream)
     sp.play()
