@@ -444,7 +444,7 @@ def main():
               MyChord('D3', 4, 'maj7', [0, 3, 7, 14]),
               ]
 
-    metadata = Metadata('C', chords, '4/4', 360, smallest_note)
+    metadata = Metadata('C', chords, '4/4', 140, smallest_note)
     measures_per_phrase = 4
     metadata.midi_out = get_virtual_midi_port()
     if not metadata.midi_out:
@@ -472,7 +472,8 @@ def main():
         measures.load('measures.np')
         phrases.load('phrases.np')
 
-    t0 = time.time()
+    last_time = time.time()
+    t0 = last_time
     for itr in range(100):
 
         measures.save('in_progress_measures.np')
@@ -488,12 +489,12 @@ def main():
 
         measures.save('measures.np')
         phrases.save('phrases.np')
-        print("Generation %i completed" % itr)
+        t_now = time.time()
+        print("Generation %i completed in %i seconds." % (itr, int(t_now - last_time)))
+        last_time = t_now
 
     t1 = time.time()
     print("Training Time:", t1 - t0)
-    t0 = t1
-
     print("Done. (hit any key to exit)")
 
 if __name__ == '__main__':
