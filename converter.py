@@ -93,7 +93,7 @@ def measure_to_midi(measure, metadata, accompany=False):
             midi_numbers = [root.pitch.midi + offset for offset in current_chord_info.accompaniment]
             chord = music21.chord.Chord(midi_numbers)
             chord.quarterLength = current_chord_info.beats
-            chord.volume.velocity = 6
+            chord.volume.velocity = 10
             backing_part.insert(chord)
 
         if genjam_e == 15:

@@ -356,6 +356,22 @@ class PhrasePopulation(Population):
                 measures.genomes[measure_idx].fitness += np.random.randint(-2, 2)
 
     @staticmethod
+    def assign_fitness_penalize_jumps(phrase_pop, measures, metadata):
+        phrase_genomes = phrase_pop.genomes
+        for pidx, phrase in enumerate(phrase_genomes):
+            for measure_idx in phrase:
+                measure = measures.genomes[measure_idx]
+                last_note = None
+                for note in measure:
+                    if 0 < note < 15:
+                        if not last_note:
+                            last_note = note
+                        else:
+                            jump_size = last_note - note
+                            if jump_size > 3:
+                                measure.fitness -= jump_size
+
+    @staticmethod
     def assign_fitness(phrase_pop, measures, metadata):
         # in beats
         phrase_genomes = phrase_pop.genomes
@@ -440,8 +456,8 @@ def main():
     # one measure of each chord for 4 beats each
     chords = [MyChord('E3', 4, 'min7', [0, 3, 7, 14]),
               MyChord('G3', 4, 'maj7', [0, 4, 7, 10]),
-              MyChord('D3', 4, 'maj7', [0, 3, 7, 14]),
-              MyChord('D3', 4, 'maj7', [0, 3, 7, 14]),
+              MyChord('D3', 4, 'maj7', [0, 4, 7, 14]),
+              MyChord('D3', 4, 'maj7', [0, 4, 7, 14]),
               ]
 
     metadata = Metadata('C', chords, '4/4', 140, smallest_note)
@@ -481,8 +497,9 @@ def main():
 
         # occasionall, don't use genetic operators and just build up fitness scores
         if itr < 3 or itr % 5 == 0:
-            PhrasePopulation.assign_fitness(phrases, measures, metadata)
+            # PhrasePopulation.assign_fitness(phrases, measures, metadata)
             # PhrasePopulation.assign_random_fitness(phrases, measures, metadata)
+            PhrasePopulation.assign_fitness_penalize_jumps(phrases, measures, metadata)
         else:
             measures = run(measures, Measure.mutate, None)
             phrases = run(phrases, Phrase.mutate, PhrasePopulation.assign_fitness, measures, metadata)
