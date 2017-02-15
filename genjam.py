@@ -552,7 +552,7 @@ def main():
         measures.save('in_progress_measures.np')
         phrases.save('in_progress_phrases.np')
 
-        # occasionall, don't use genetic operators and just build up fitness scores
+        # occasionally, don't use genetic operators and just build up fitness scores
         if itr < 3 or itr % 5 == 0:
             # PhrasePopulation.assign_fitness(phrases, measures, metadata)
             # PhrasePopulation.assign_random_fitness(phrases, measures, metadata)
