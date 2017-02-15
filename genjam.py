@@ -1,3 +1,5 @@
+#!/usr/bin/python3.5
+
 import sys
 import os
 import time
@@ -522,15 +524,26 @@ def main():
         print("Loading measure & phrase populations from files")
         measures.load('measures.np')
         phrases.load('phrases.np')
-
-    if '--render' in sys.argv:
+    elif '--play' in sys.argv:
+        print("Loading and playing saved generation")
+        measures.load('measures.np')
+        phrases.load('phrases.np')
+        phrases.play(measures, metadata)
+        return
+    elif '--render' in sys.argv:
+        print("Loading and rendering saved generation")
+        measures.load('measures.np')
+        phrases.load('phrases.np')
         if os.path.exists('output.mid'):
             if input("overwrite output.mid? [y/n]") == 'y':
                 phrases.render_midi(measures, metadata, 'output.mid')
+                return
             else:
                 print("Ignoring.")
+                return
         else:
             phrases.render_midi(measures, metadata, 'output.mid')
+            return
 
     last_time = time.time()
     t0 = last_time
