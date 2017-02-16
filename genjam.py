@@ -499,7 +499,7 @@ def automatic_fitness(phrases, measures, metadata, ff):
     population_stream = music21.stream.Stream()
     population_stream.append(music21.tempo.MetronomeMark(number=metadata.tempo))
     total_population_fitness = 0
-    rest_on = None
+    last_note = None
     for phrase in phrase_genomes:
         measure_metadata = deepcopy(metadata)
 
@@ -526,37 +526,33 @@ def automatic_fitness(phrases, measures, metadata, ff):
             phrase.fitness += f
             total_population_fitness += f
 
-            # add penalty for too many rests
+            # add penalty for empty bars
+            empty = True
             for note in measure:
-                if note == 0:
-                    rest_on = True
-                elif 0 < note < 15:
-                    rest_on = False
+                if 0 < note < 15:
+                    empty = False
+            if empty:
+                measure.fitness -= 100
 
-                if rest_on and note == 15:
-                    measure.fitness -= 3
+            # penalty for too many 16th notes
+            # for note in measure:
+            #     if last_note:
+            #         if (0 < note < 15) and (0 < last_note < 15):
+            #             measure.fitness -= 10
+            #     last_note = note
 
     print(total_population_fitness)
 
 
 def main():
-
     if '--debug' in sys.argv:
         print("waiting 10 seconds so you can attach a debugger...")
         time.sleep(10)
 
-    measure_pop_size = 256
-    smallest_note = 16
+    measure_pop_size = 32
+    smallest_note = 8
     # one measure of each chord for 4 beats each
     chords = [MyChord('E3', 4, 'min7', [0, 3, 7, 14]),
-              MyChord('G3', 4, 'maj7', [0, 4, 7, 10]),
-              MyChord('D3', 4, 'maj7', [0, 4, 7, 14]),
-              MyChord('D3', 4, 'maj7', [0, 4, 7, 14]),
-              MyChord('E3', 4, 'min7', [0, 3, 7, 14]),
-              MyChord('G3', 4, 'maj7', [0, 4, 7, 10]),
-              MyChord('D3', 4, 'maj7', [0, 4, 7, 14]),
-              MyChord('D3', 4, 'maj7', [0, 4, 7, 14]),
-              MyChord('E3', 4, 'min7', [0, 3, 7, 14]),
               MyChord('G3', 4, 'maj7', [0, 4, 7, 10]),
               MyChord('D3', 4, 'maj7', [0, 4, 7, 14]),
               MyChord('D3', 4, 'maj7', [0, 4, 7, 14]),
@@ -567,7 +563,7 @@ def main():
               ]
 
     metadata = Metadata('C', chords, '4/4', 140, smallest_note, 80)
-    measures_per_phrase = 16
+    measures_per_phrase = 8
 
     phrase_genome_len = log(measure_pop_size, 2)
     if not phrase_genome_len.is_integer():
@@ -580,7 +576,7 @@ def main():
         m.initialize()
         measures.genomes.append(m)
 
-    phrases = PhrasePopulation(32)
+    phrases = PhrasePopulation(16)
     for itr in range(phrases.size):
         p = Phrase(length=measures_per_phrase, number_size=phrase_genome_len)
         p.initialize()
@@ -619,10 +615,12 @@ def main():
         nbinput = None
         ff = FitnessFunction()
         print("Using automatic fitness function")
+
     num_generations = 100
     if '--generations' in sys.argv:
         _pos = sys.argv.index('--generations')
         num_generations = int(sys.argv[_pos + 1])
+
     print("Running " + str(num_generations) + " generations.")
     last_time = time.time()
     t0 = last_time
