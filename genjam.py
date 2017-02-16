@@ -606,10 +606,14 @@ def main():
         nbinput = None
         ff = FitnessFunction()
         print("Using automatic fitness function")
-
+    num_generations = 100
+    if '--generations' in sys.argv:
+        _pos = sys.argv.index('--generations')
+        num_generations = int(sys.argv[_pos + 1])
+    print("Running " + str(num_generations) + " generations.")
     last_time = time.time()
     t0 = last_time
-    for itr in range(100):
+    for itr in range(num_generations):
 
         measures.save('in_progress_measures.np')
         phrases.save('in_progress_phrases.np')

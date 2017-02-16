@@ -6,3 +6,4 @@ wjazzd.db
 *.swp
 .idea
 *.pyc
+socat.sh
