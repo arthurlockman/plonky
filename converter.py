@@ -57,8 +57,8 @@ def phrase_to_parts(phrase, measure_population, metadata, accompany=False):
     phrase_lead_part = music21.stream.Part()
     phrase_backing_part = music21.stream.Part()
 
-    for measure in phrase:
-        measure = measure_population.genomes[measure]
+    for measure_idx in phrase:
+        measure = measure_population.genomes[measure_idx]
         measure_lead_part, measure_backing_part, beat_idx, chord_idx = measure_to_parts(measure,
                                                                                         measure_metadata,
                                                                                         accompany=accompany)

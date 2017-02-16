@@ -1,17 +1,20 @@
 from __future__ import print_function, division
-from math import log
+
 import os
 import sys
 import time
-from fitness import FitnessFunction
+from copy import deepcopy
+from math import log
 
 import music21
 import numpy as np
 from bitstring import BitStream
 
-from converter import Metadata, phrase_to_parts, MyChord
+from converter import Metadata, phrase_to_parts, MyChord, measure_to_parts
+from fitness import FitnessFunction
 from ga import Genome, Population, run, uint_to_bit_str
 from non_blocking_input import NonBlockingInput
+
 
 class Measure(Genome):
 
@@ -405,6 +408,23 @@ def assign_fitness_penalize_jumps(phrase_pop, measures, metadata):
                             measure.fitness -= jump_size
 
 
+def assign_fitness_penalize_rests(phrase_pop, measures, metadata):
+    phrase_genomes = phrase_pop.genomes
+    rest_on = None
+    for pidx, phrase in enumerate(phrase_genomes):
+        for measure_idx in phrase:
+            measure = measures.genomes[measure_idx]
+            for note in measure:
+                if note == 0:
+                    rest_on = True
+                elif 0 < note < 15:
+                    rest_on = False
+
+                if rest_on and note == 15:
+                    measure.fitness -= 6
+                    phrase.fitness -= 2
+
+
 def manual_fitness(phrase_pop, measures, metadata, nbinput):
     # in beats
     phrase_genomes = phrase_pop.genomes
@@ -478,16 +498,45 @@ def automatic_fitness(phrases, measures, metadata, ff):
     phrase_genomes = phrases.genomes
     population_stream = music21.stream.Stream()
     population_stream.append(music21.tempo.MetronomeMark(number=metadata.tempo))
-    for idx, phrase in enumerate(phrase_genomes):
-        phrase_lead, phrase_backing = phrase_to_parts(phrase, measures, metadata, accompany=False)
-        population_stream.append(phrase_lead.flat)
+    total_population_fitness = 0
+    rest_on = None
+    for phrase in phrase_genomes:
+        measure_metadata = deepcopy(metadata)
 
-    mf = music21.midi.translate.streamToMidiFile(population_stream.flat)
-    tmp_midi_name = '.tmp.mid'
-    mf.open(tmp_midi_name, 'wb')
-    mf.write()
-    mf.close()
-    ff.evaluate_fitness(tmp_midi_name)
+        for measure_idx in phrase:
+            measure = measures.genomes[measure_idx]
+            measure_lead_part, _, beat_idx, chord_idx = measure_to_parts(measure, measure_metadata)
+
+            measure_metadata.chords = measure_metadata.chords[chord_idx:]
+            if len(measure_metadata.chords) == 0:
+                measure_metadata.chords = deepcopy(metadata.chords)
+            measure_metadata.chords[0].beats -= beat_idx
+
+            mf = music21.midi.translate.streamToMidiFile(measure_lead_part.flat)
+            tmp_midi_name = '.tmp.mid'
+            mf.open(tmp_midi_name, 'wb')
+            mf.write()
+            mf.close()
+            f = ff.evaluate_fitness(tmp_midi_name)
+            if f is None:
+                sys.exit("No Fitness Returned")
+            else:
+                f = int(f)
+            measure.fitness += f
+            phrase.fitness += f
+            total_population_fitness += f
+
+            # add penalty for too many rests
+            for note in measure:
+                if note == 0:
+                    rest_on = True
+                elif 0 < note < 15:
+                    rest_on = False
+
+                if rest_on and note == 15:
+                    measure.fitness -= 6
+
+    print(total_population_fitness)
 
 
 def main():
@@ -496,7 +545,7 @@ def main():
         print("waiting 10 seconds so you can attach a debugger...")
         time.sleep(10)
 
-    measure_pop_size = 32
+    measure_pop_size = 64
     smallest_note = 8
     # one measure of each chord for 4 beats each
     chords = [MyChord('E3', 4, 'min7', [0, 3, 7, 14]),
@@ -519,7 +568,7 @@ def main():
         m.initialize()
         measures.genomes.append(m)
 
-    phrases = PhrasePopulation(24)
+    phrases = PhrasePopulation(64)
     for itr in range(phrases.size):
         p = Phrase(length=measures_per_phrase, number_size=phrase_genome_len)
         p.initialize()
@@ -551,13 +600,14 @@ def main():
         manual = True
         ff = None
         print("Using manual fitness function")
+        nbinput = NonBlockingInput()
     else:
         manual = False
+        nbinput = None
         ff = FitnessFunction()
         print("Using automatic fitness function")
 
     last_time = time.time()
-    nbinput = NonBlockingInput()
     t0 = last_time
     for itr in range(100):
 
@@ -571,8 +621,9 @@ def main():
             else:
                 automatic_fitness(phrases, measures, metadata, ff)
         # elif itr % 5 == 0:
-        #     # PhrasePopulation.assign_random_fitness(phrases, measures, metadata)
-        #     PhrasePopulation.assign_fitness_penalize_jumps(phrases, measures, metadata)
+            # assign_random_fitness(phrases, measures, metadata)
+            # assign_fitness_penalize_jumps(phrases, measures, metadata)
+            # assign_fitness_penalize_rests(phrases, measures, metadata)
         else:
             measures = run(measures, Measure.mutate, None)
             if manual:
@@ -583,7 +634,7 @@ def main():
         measures.save('measures.np')
         phrases.save('phrases.np')
         t_now = time.time()
-        print("Generation %i completed in %i seconds." % (itr, int(t_now - last_time)))
+        print("Generation %i completed in %3.3f seconds." % (itr, t_now - last_time))
         last_time = t_now
 
     t1 = time.time()
