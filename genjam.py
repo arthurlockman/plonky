@@ -1,9 +1,7 @@
-#!/usr/bin/python3.5
-
-import sys
-import os
+from __future__ import print_function, division
 import time
 from math import log
+from fitness import *
 
 import music21
 import numpy as np
@@ -12,10 +10,6 @@ from bitstring import BitStream
 from converter import Metadata, phrase_to_parts, MyChord
 from ga import Genome, Population, run, uint_to_bit_str
 from non_blocking_input import NonBlockingInput
-from synth_wrapper import get_virtual_midi_port, send_stream_to_virtual_midi
-
-nbinput = NonBlockingInput()
-
 
 class Measure(Genome):
 
@@ -375,7 +369,7 @@ class PhrasePopulation(Population):
                                 measure.fitness -= jump_size
 
     @staticmethod
-    def assign_fitness(phrase_pop, measures, metadata):
+    def assign_fitness(phrase_pop, measures, metadata, nbinput):
         # in beats
         phrase_genomes = phrase_pop.genomes
         feedback_offset = 2
@@ -388,17 +382,17 @@ class PhrasePopulation(Population):
             population_lead_part.append(phrase_lead)
             population_backing_part.append(phrase_backing)
 
-        beat_idx = 0
-        measure_idx = 0
-        prescalar = 8
-        raw_count = 0
-        measures_per_phrase = phrase_genomes[0].length
-        beats_per_measure = metadata.time_signature.numerator
-        beats_per_phrase = beats_per_measure * measures_per_phrase
+        d = {'raw_count': 0}
 
-        def get_feedback(verbose):
-            nonlocal raw_count, measure_idx, beat_idx, prescalar, beats_per_measure
-            beat_idx = raw_count // prescalar
+        def get_feedback(args):
+            verbose, _prescalar = args
+            # constant variables
+            measures_per_phrase = phrase_genomes[0].length
+            beats_per_measure = metadata.time_signature.numerator
+            beats_per_phrase = beats_per_measure * measures_per_phrase
+
+            # figure out where we are in the stream
+            beat_idx = d['raw_count'] // _prescalar
 
             # move feedback back by a fixed number of beats
             beat_idx = max(0, beat_idx - feedback_offset)
@@ -427,24 +421,19 @@ class PhrasePopulation(Population):
                 filename_m = 'measures_' + str(metadata) + "_" + str(int(t)) + '.np'
                 measures.save(filename_m)
                 print("saved " + filename_m + " and " + filename_p)
-            elif i == 'p':
-                print(end='\n')
-                input("Will pause at end generation. No feedback will be given for the rest of this generation. \
-                      Press enter to resume...")
-                print(end='\n')
-                print("resuming.")
             else:
                 if verbose:
                     print("%i %i %i" % (phrase_idx, measure_idx, beat_idx))
 
-            raw_count += 1
+            d['raw_count'] += 1
 
+        prescalar = 8
         wait_ms = metadata.ms_per_beat / prescalar
         population_stream = music21.stream.Stream()
         population_stream.append(population_lead_part)
         population_stream.append(population_backing_part)
         sp = music21.midi.realtime.StreamPlayer(population_stream)
-        sp.play(busyFunction=get_feedback, busyArgs=False, busyWaitMilliseconds=wait_ms)
+        sp.play(busyFunction=get_feedback, busyArgs=[False, prescalar], busyWaitMilliseconds=wait_ms)
         # send_stream_to_virtual_midi(metadata.midi_out, phrase_stream, metadata)
 
     def render_midi(self, measures, metadata, filename):
@@ -499,9 +488,6 @@ def main():
 
     metadata = Metadata('C', chords, '4/4', 140, smallest_note)
     measures_per_phrase = 4
-    metadata.midi_out = get_virtual_midi_port()
-    if not metadata.midi_out:
-        return
 
     phrase_genome_len = log(measure_pop_size, 2)
     if not phrase_genome_len.is_integer():
@@ -546,6 +532,7 @@ def main():
             return
 
     last_time = time.time()
+    nbinput = NonBlockingInput()
     t0 = last_time
     for itr in range(100):
 
@@ -553,13 +540,14 @@ def main():
         phrases.save('in_progress_phrases.np')
 
         # occasionally, don't use genetic operators and just build up fitness scores
-        if itr < 3 or itr % 5 == 0:
-            # PhrasePopulation.assign_fitness(phrases, measures, metadata)
-            # PhrasePopulation.assign_random_fitness(phrases, measures, metadata)
-            PhrasePopulation.assign_fitness_penalize_jumps(phrases, measures, metadata)
+        if itr == 0:
+            PhrasePopulation.assign_fitness(phrases, measures, metadata, nbinput)
+        # elif itr % 5 == 0:
+        #     # PhrasePopulation.assign_random_fitness(phrases, measures, metadata)
+        #     PhrasePopulation.assign_fitness_penalize_jumps(phrases, measures, metadata)
         else:
             measures = run(measures, Measure.mutate, None)
-            phrases = run(phrases, Phrase.mutate, PhrasePopulation.assign_fitness, measures, metadata)
+            phrases = run(phrases, Phrase.mutate, PhrasePopulation.assign_fitness, measures, metadata, nbinput)
             # phrases = run(phrases, Phrase.mutate, PhrasePopulation.assign_random_fitness, measures, metadata)
 
         measures.save('measures.np')

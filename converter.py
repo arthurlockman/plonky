@@ -1,6 +1,6 @@
+from __future__ import print_function, division
+
 import music21
-import numpy as np
-import time
 from copy import deepcopy
 
 # Each number is midi pitch relative to the tonic of the chord
