@@ -35,7 +35,7 @@ class MyChord:
 
 class Metadata:
 
-    def __init__(self, key, chords, time_signature, tempo, smallest_note, accompaniment=None):
+    def __init__(self, key, chords, time_signature, tempo, smallest_note, backing_velocity, accompaniment=None):
         self.key = music21.key.Key(key)
         self.chords = chords
         self.time_signature = music21.meter.TimeSignature(time_signature)
@@ -45,6 +45,7 @@ class Metadata:
         self.tempo = tempo
         self.ms_per_beat = (60 * 1000 / tempo)
         self.accompaniment = accompaniment
+        self.backing_velocity = backing_velocity
 
     def __str__(self):
         return '_'.join([str(self.key), str(self.time_signature.ratioString.replace('/', '-')),
@@ -91,7 +92,7 @@ def measure_to_parts(measure, metadata, accompany=False):
             midi_numbers = [root.pitch.midi + offset for offset in current_chord_info.accompaniment]
             chord = music21.chord.Chord(midi_numbers)
             chord.quarterLength = current_chord_info.beats
-            chord.volume.velocity = 10
+            chord.volume.velocity = metadata.backing_velocity
             backing_part.insert(chord)
 
         if genjam_e == 15:

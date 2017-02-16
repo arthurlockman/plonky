@@ -534,7 +534,7 @@ def automatic_fitness(phrases, measures, metadata, ff):
                     rest_on = False
 
                 if rest_on and note == 15:
-                    measure.fitness -= 6
+                    measure.fitness -= 3
 
     print(total_population_fitness)
 
@@ -545,17 +545,29 @@ def main():
         print("waiting 10 seconds so you can attach a debugger...")
         time.sleep(10)
 
-    measure_pop_size = 64
-    smallest_note = 8
+    measure_pop_size = 256
+    smallest_note = 16
     # one measure of each chord for 4 beats each
     chords = [MyChord('E3', 4, 'min7', [0, 3, 7, 14]),
               MyChord('G3', 4, 'maj7', [0, 4, 7, 10]),
               MyChord('D3', 4, 'maj7', [0, 4, 7, 14]),
               MyChord('D3', 4, 'maj7', [0, 4, 7, 14]),
+              MyChord('E3', 4, 'min7', [0, 3, 7, 14]),
+              MyChord('G3', 4, 'maj7', [0, 4, 7, 10]),
+              MyChord('D3', 4, 'maj7', [0, 4, 7, 14]),
+              MyChord('D3', 4, 'maj7', [0, 4, 7, 14]),
+              MyChord('E3', 4, 'min7', [0, 3, 7, 14]),
+              MyChord('G3', 4, 'maj7', [0, 4, 7, 10]),
+              MyChord('D3', 4, 'maj7', [0, 4, 7, 14]),
+              MyChord('D3', 4, 'maj7', [0, 4, 7, 14]),
+              MyChord('E3', 4, 'min7', [0, 3, 7, 14]),
+              MyChord('G3', 4, 'maj7', [0, 4, 7, 10]),
+              MyChord('D3', 4, 'maj7', [0, 4, 7, 14]),
+              MyChord('D3', 4, 'maj7', [0, 4, 7, 14]),
               ]
 
-    metadata = Metadata('C', chords, '4/4', 140, smallest_note)
-    measures_per_phrase = 4
+    metadata = Metadata('C', chords, '4/4', 140, smallest_note, 80)
+    measures_per_phrase = 16
 
     phrase_genome_len = log(measure_pop_size, 2)
     if not phrase_genome_len.is_integer():
@@ -568,7 +580,7 @@ def main():
         m.initialize()
         measures.genomes.append(m)
 
-    phrases = PhrasePopulation(64)
+    phrases = PhrasePopulation(32)
     for itr in range(phrases.size):
         p = Phrase(length=measures_per_phrase, number_size=phrase_genome_len)
         p.initialize()
@@ -601,6 +613,7 @@ def main():
         ff = None
         print("Using manual fitness function")
         nbinput = NonBlockingInput()
+        metadata.backing_velocity = 10
     else:
         manual = False
         nbinput = None
