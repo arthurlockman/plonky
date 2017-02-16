@@ -1,6 +1,4 @@
-import ast
 import os
-import time
 
 # internal imports
 
@@ -10,10 +8,6 @@ import magenta
 from magenta.models.melody_rnn import melody_rnn_config_flags
 from magenta.models.melody_rnn import melody_rnn_model
 from magenta.models.melody_rnn import melody_rnn_sequence_generator
-from magenta.protobuf import generator_pb2
-from magenta.protobuf import music_pb2
-import argparse as _argparse
-import sys
 import magenta.music as mm
 
 FLAGS = tf.app.flags.FLAGS
@@ -157,7 +151,7 @@ class FitnessFunction:
             if FLAGS.bundle_description is None:
                 tf.logging.warning('No bundle description provided.')
             tf.logging.info('Saving generator bundle to %s', bundle_filename)
-            generator.create_bundle_file(bundle_filename, FLAGS.bundle_description)
+            self.generator.create_bundle_file(bundle_filename, FLAGS.bundle_description)
         else:
             self.generator.initialize()
 

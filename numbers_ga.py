@@ -7,7 +7,7 @@ from ga import Genome, Population, run
 class NumberGenome(Genome):
 
     def __init__(self, number_size):
-        super().__init__(length=6, number_size=number_size, signed=True)
+        super(self, NumberGenome).__init__(length=6, number_size=number_size, signed=True)
 
     def initialize(self):
         num_bits = self.number_size * self.length

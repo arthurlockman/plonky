@@ -56,8 +56,6 @@ def phrase_to_parts(phrase, measure_population, metadata, accompany=False):
 
     phrase_lead_part = music21.stream.Part()
     phrase_backing_part = music21.stream.Part()
-    phrase_lead_part.append(music21.tempo.MetronomeMark(number=metadata.tempo))
-    phrase_backing_part.append(music21.tempo.MetronomeMark(number=metadata.tempo))
 
     for measure in phrase:
         measure = measure_population.genomes[measure]

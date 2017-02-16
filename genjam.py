@@ -1,7 +1,9 @@
 from __future__ import print_function, division
-import time
 from math import log
-from fitness import *
+import os
+import sys
+import time
+from fitness import FitnessFunction
 
 import music21
 import numpy as np
@@ -343,99 +345,6 @@ class PhrasePopulation(Population):
 
         return selected
 
-
-    @staticmethod
-    def assign_random_fitness(phrase_pop, measures, metadata):
-        phrase_genomes = phrase_pop.genomes
-        for pidx, phrase in enumerate(phrase_genomes):
-            phrase.fitness += np.random.randint(-2, 2)
-            for measure_idx in phrase:
-                measures.genomes[measure_idx].fitness += np.random.randint(-2, 2)
-
-    @staticmethod
-    def assign_fitness_penalize_jumps(phrase_pop, measures, metadata):
-        phrase_genomes = phrase_pop.genomes
-        last_note = None
-        for pidx, phrase in enumerate(phrase_genomes):
-            for measure_idx in phrase:
-                measure = measures.genomes[measure_idx]
-                for note in measure:
-                    if 0 < note < 15:
-                        if not last_note:
-                            last_note = note
-                        else:
-                            jump_size = last_note - note
-                            if jump_size > 3:
-                                measure.fitness -= jump_size
-
-    @staticmethod
-    def assign_fitness(phrase_pop, measures, metadata, nbinput):
-        # in beats
-        phrase_genomes = phrase_pop.genomes
-        feedback_offset = 2
-        population_lead_part = music21.stream.Part()
-        population_backing_part = music21.stream.Part()
-        population_lead_part.append(music21.instrument.Trumpet())
-        population_backing_part.append(music21.instrument.Piano())
-        for idx, phrase in enumerate(phrase_genomes):
-            phrase_lead, phrase_backing = phrase_to_parts(phrase, measures, metadata, accompany=True)
-            population_lead_part.append(phrase_lead)
-            population_backing_part.append(phrase_backing)
-
-        d = {'raw_count': 0}
-
-        def get_feedback(args):
-            verbose, _prescalar = args
-            # constant variables
-            measures_per_phrase = phrase_genomes[0].length
-            beats_per_measure = metadata.time_signature.numerator
-            beats_per_phrase = beats_per_measure * measures_per_phrase
-
-            # figure out where we are in the stream
-            beat_idx = d['raw_count'] // _prescalar
-
-            # move feedback back by a fixed number of beats
-            beat_idx = max(0, beat_idx - feedback_offset)
-
-            phrase_idx = beat_idx // beats_per_phrase
-            current_phrase = phrase_genomes[phrase_idx]
-            measure_idx = (beat_idx % beats_per_phrase) // beats_per_measure
-            current_measure = measures.genomes[current_phrase[measure_idx]]
-
-            # Non-Blocking check for input and assign fitness
-            i = nbinput.input()
-            if i == 'g':
-                current_phrase.fitness += 1
-                current_measure.fitness += 1
-                if verbose:
-                    print("%s %i %i +1" % (current_phrase, measure_idx, beat_idx))
-            elif i == 'b':
-                current_phrase.fitness -= 1
-                current_measure.fitness -= 1
-                if verbose:
-                    print("%s %i %i -1" % (current_phrase, measure_idx, beat_idx))
-            elif i == 's':
-                t = time.time()
-                filename_p = 'phrases_' + str(metadata) + "_" + str(int(t)) + '.np'
-                phrase_pop.save(filename_p)
-                filename_m = 'measures_' + str(metadata) + "_" + str(int(t)) + '.np'
-                measures.save(filename_m)
-                print("saved " + filename_m + " and " + filename_p)
-            else:
-                if verbose:
-                    print("%i %i %i" % (phrase_idx, measure_idx, beat_idx))
-
-            d['raw_count'] += 1
-
-        prescalar = 8
-        wait_ms = metadata.ms_per_beat / prescalar
-        population_stream = music21.stream.Stream()
-        population_stream.append(population_lead_part)
-        population_stream.append(population_backing_part)
-        sp = music21.midi.realtime.StreamPlayer(population_stream)
-        sp.play(busyFunction=get_feedback, busyArgs=[False, prescalar], busyWaitMilliseconds=wait_ms)
-        # send_stream_to_virtual_midi(metadata.midi_out, phrase_stream, metadata)
-
     def render_midi(self, measures, metadata, filename):
         population_lead_part = music21.stream.Part()
         population_backing_part = music21.stream.Part()
@@ -446,9 +355,9 @@ class PhrasePopulation(Population):
             population_lead_part.append(phrase_lead)
             population_backing_part.append(phrase_backing)
         population_stream = music21.stream.Stream()
-        population_stream.append(population_lead_part)
-        population_stream.append(population_backing_part)
-
+        population_stream.append(music21.tempo.MetronomeMark(number=metadata.tempo))
+        population_stream.append(population_lead_part.flat)
+        population_stream.append(population_backing_part.flat)
         midi_file = music21.midi.translate.streamToMidiFile(population_stream)
         midi_file.open(filename, 'wb')
         midi_file.write()
@@ -464,11 +373,121 @@ class PhrasePopulation(Population):
             population_lead_part.append(phrase_lead)
             population_backing_part.append(phrase_backing)
         population_stream = music21.stream.Stream()
-        population_stream.append(population_lead_part)
-        population_stream.append(population_backing_part)
+        population_stream.append(music21.tempo.MetronomeMark(number=metadata.tempo))
+        population_stream.append(population_lead_part.flat)
+        population_stream.append(population_backing_part.flat)
 
         sp = music21.midi.realtime.StreamPlayer(population_stream)
         sp.play()
+
+
+def assign_random_fitness(phrase_pop, measures, metadata):
+    phrase_genomes = phrase_pop.genomes
+    for pidx, phrase in enumerate(phrase_genomes):
+        phrase.fitness += np.random.randint(-2, 2)
+        for measure_idx in phrase:
+            measures.genomes[measure_idx].fitness += np.random.randint(-2, 2)
+
+
+def assign_fitness_penalize_jumps(phrase_pop, measures, metadata):
+    phrase_genomes = phrase_pop.genomes
+    last_note = None
+    for pidx, phrase in enumerate(phrase_genomes):
+        for measure_idx in phrase:
+            measure = measures.genomes[measure_idx]
+            for note in measure:
+                if 0 < note < 15:
+                    if not last_note:
+                        last_note = note
+                    else:
+                        jump_size = last_note - note
+                        if jump_size > 3:
+                            measure.fitness -= jump_size
+
+
+def manual_fitness(phrase_pop, measures, metadata, nbinput):
+    # in beats
+    phrase_genomes = phrase_pop.genomes
+    feedback_offset = 2
+    population_lead_part = music21.stream.Part()
+    population_backing_part = music21.stream.Part()
+    population_lead_part.append(music21.instrument.Trumpet())
+    population_backing_part.append(music21.instrument.Piano())
+    for idx, phrase in enumerate(phrase_genomes):
+        phrase_lead, phrase_backing = phrase_to_parts(phrase, measures, metadata, accompany=True)
+        population_lead_part.append(phrase_lead)
+        population_backing_part.append(phrase_backing)
+
+    d = {'raw_count': 0}
+
+    def get_feedback(args):
+        verbose, _prescalar = args
+        # constant variables
+        measures_per_phrase = phrase_genomes[0].length
+        beats_per_measure = metadata.time_signature.numerator
+        beats_per_phrase = beats_per_measure * measures_per_phrase
+
+        # figure out where we are in the stream
+        beat_idx = d['raw_count'] // _prescalar
+
+        # move feedback back by a fixed number of beats
+        beat_idx = max(0, beat_idx - feedback_offset)
+
+        phrase_idx = beat_idx // beats_per_phrase
+        current_phrase = phrase_genomes[phrase_idx]
+        measure_idx = (beat_idx % beats_per_phrase) // beats_per_measure
+        current_measure = measures.genomes[current_phrase[measure_idx]]
+
+        # Non-Blocking check for input and assign fitness
+        i = nbinput.input()
+        if i == 'g':
+            current_phrase.fitness += 1
+            current_measure.fitness += 1
+            if verbose:
+                print("%s %i %i +1" % (current_phrase, measure_idx, beat_idx))
+        elif i == 'b':
+            current_phrase.fitness -= 1
+            current_measure.fitness -= 1
+            if verbose:
+                print("%s %i %i -1" % (current_phrase, measure_idx, beat_idx))
+        elif i == 's':
+            t = time.time()
+            filename_p = 'phrases_' + str(metadata) + "_" + str(int(t)) + '.np'
+            phrase_pop.save(filename_p)
+            filename_m = 'measures_' + str(metadata) + "_" + str(int(t)) + '.np'
+            measures.save(filename_m)
+            print("saved " + filename_m + " and " + filename_p)
+        else:
+            if verbose:
+                print("%i %i %i" % (phrase_idx, measure_idx, beat_idx))
+
+        d['raw_count'] += 1
+
+    prescalar = 8
+    wait_ms = metadata.ms_per_beat / prescalar
+    population_stream = music21.stream.Stream()
+    population_stream.append(music21.tempo.MetronomeMark(number=metadata.tempo))
+    population_stream.append(population_lead_part.flat)
+    population_stream.append(population_backing_part.flat)
+    sp = music21.midi.realtime.StreamPlayer(population_stream)
+    sp.play(busyFunction=get_feedback, busyArgs=[False, prescalar], busyWaitMilliseconds=wait_ms)
+    # send_stream_to_virtual_midi(metadata.midi_out, phrase_stream, metadata)
+
+
+def automatic_fitness(phrases, measures, metadata, ff):
+    phrase_genomes = phrases.genomes
+    population_stream = music21.stream.Stream()
+    population_stream.append(music21.tempo.MetronomeMark(number=metadata.tempo))
+    for idx, phrase in enumerate(phrase_genomes):
+        phrase_lead, phrase_backing = phrase_to_parts(phrase, measures, metadata, accompany=False)
+        population_stream.append(phrase_lead.flat)
+
+    mf = music21.midi.translate.streamToMidiFile(population_stream.flat)
+    tmp_midi_name = '.tmp.mid'
+    mf.open(tmp_midi_name, 'wb')
+    mf.write()
+    mf.close()
+    ff.evaluate_fitness(tmp_midi_name)
 
 
 def main():
@@ -510,18 +529,15 @@ def main():
         print("Loading measure & phrase populations from files")
         measures.load('measures.np')
         phrases.load('phrases.np')
-    elif '--play' in sys.argv:
-        print("Loading and playing saved generation")
-        measures.load('measures.np')
-        phrases.load('phrases.np')
+
+    if '--play' in sys.argv:
+        print("playing generation")
         phrases.play(measures, metadata)
         return
     elif '--render' in sys.argv:
-        print("Loading and rendering saved generation")
-        measures.load('measures.np')
-        phrases.load('phrases.np')
+        print("rendering generation")
         if os.path.exists('output.mid'):
-            if input("overwrite output.mid? [y/n]") == 'y':
+            if raw_input("overwrite output.mid? [y/n]") == 'y':
                 phrases.render_midi(measures, metadata, 'output.mid')
                 return
             else:
@@ -530,6 +546,15 @@ def main():
         else:
             phrases.render_midi(measures, metadata, 'output.mid')
             return
+
+    if '--manual' in sys.argv:
+        manual = True
+        ff = None
+        print("Using manual fitness function")
+    else:
+        manual = False
+        ff = FitnessFunction()
+        print("Using automatic fitness function")
 
     last_time = time.time()
     nbinput = NonBlockingInput()
@@ -541,14 +566,19 @@ def main():
 
         # occasionally, don't use genetic operators and just build up fitness scores
         if itr == 0:
-            PhrasePopulation.assign_fitness(phrases, measures, metadata, nbinput)
+            if manual:
+                manual_fitness(phrases, measures, metadata, nbinput)
+            else:
+                automatic_fitness(phrases, measures, metadata, ff)
         # elif itr % 5 == 0:
         #     # PhrasePopulation.assign_random_fitness(phrases, measures, metadata)
         #     PhrasePopulation.assign_fitness_penalize_jumps(phrases, measures, metadata)
         else:
             measures = run(measures, Measure.mutate, None)
-            phrases = run(phrases, Phrase.mutate, PhrasePopulation.assign_fitness, measures, metadata, nbinput)
-            # phrases = run(phrases, Phrase.mutate, PhrasePopulation.assign_random_fitness, measures, metadata)
+            if manual:
+                phrases = run(phrases, Phrase.mutate, manual_fitness, measures, metadata, nbinput)
+            else:
+                phrases = run(phrases, Phrase.mutate, automatic_fitness, measures, metadata, ff)
 
         measures.save('measures.np')
         phrases.save('phrases.np')
