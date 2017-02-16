@@ -144,8 +144,6 @@ class FitnessFunction:
             steps_per_quarter=FLAGS.steps_per_quarter,
             checkpoint=get_checkpoint(),
             bundle=get_bundle())
-
-    def evaluate_fitness(self, midi_sequence_file):
         if FLAGS.save_generator_bundle:
             bundle_filename = os.path.expanduser(FLAGS.bundle_file)
             if FLAGS.bundle_description is None:
@@ -155,21 +153,21 @@ class FitnessFunction:
         else:
             self.generator.initialize()
 
-            tf_sequence = magenta.music.midi_file_to_sequence_proto(midi_sequence_file)
-            quantized_sequence = mm.quantize_note_sequence(
-                tf_sequence, 4)
-            extracted_melodies, _ = mm.extract_melodies(
-                quantized_sequence, min_bars=0,
-                min_unique_pitches=1, gap_bars=float('inf'),
-                ignore_polyphonic_notes=True)
-            assert len(extracted_melodies) <= 1
+    def evaluate_fitness(self, midi_sequence_file):
+        tf_sequence = magenta.music.midi_file_to_sequence_proto(midi_sequence_file)
+        quantized_sequence = mm.quantize_note_sequence(
+            tf_sequence, 4)
+        extracted_melodies, _ = mm.extract_melodies(
+            quantized_sequence, min_bars=0,
+            min_unique_pitches=1, gap_bars=float('inf'),
+            ignore_polyphonic_notes=True)
+        assert len(extracted_melodies) <= 1
 
-            if extracted_melodies and extracted_melodies[0]:
-                melody = extracted_melodies[0]
-            else:
-                return None
-            return self.generator._model.melody_log_likelihood(melody)
-        return None
+        if extracted_melodies and extracted_melodies[0]:
+            melody = extracted_melodies[0]
+        else:
+            return None
+        return self.generator._model.melody_log_likelihood(melody)
 
 
 def main(unused_argv):
