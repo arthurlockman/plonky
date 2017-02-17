@@ -1,14 +1,14 @@
+from __future__ import division
+
+import sys
 import os
 
-# internal imports
-
-import tensorflow as tf
 import magenta
-
+import magenta.music as mm
+import tensorflow as tf
 from magenta.models.melody_rnn import melody_rnn_config_flags
 from magenta.models.melody_rnn import melody_rnn_model
 from magenta.models.melody_rnn import melody_rnn_sequence_generator
-import magenta.music as mm
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -130,7 +130,7 @@ def _steps_to_seconds(steps, qpm):
   Returns:
     Number of seconds the steps represent.
   """
-    return steps * 60.0 / qpm / FLAGS.steps_per_quarter
+    return steps * 60.0 // qpm // FLAGS.steps_per_quarter
 
 
 class FitnessFunction:
@@ -161,14 +161,17 @@ class FitnessFunction:
             quantized_sequence, min_bars=0,
             min_unique_pitches=1, gap_bars=float('inf'),
             ignore_polyphonic_notes=True)
-        assert len(extracted_melodies) <= 1
+        l = len(extracted_melodies)
+        if l == 0:
+            sys.exit("No melodies found")
+        elif l > 1:
+            sys.exit("too many melodies found")
 
         if extracted_melodies and extracted_melodies[0]:
             melody = extracted_melodies[0]
         else:
             return None
-        return self.generator._model.melody_log_likelihood(melody)
-
+        return self.generator._model.melody_log_likelihood(melody), len(extracted_melodies[0])
 
 def main(unused_argv):
     ff = FitnessFunction()

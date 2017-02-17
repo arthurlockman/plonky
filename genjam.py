@@ -279,10 +279,10 @@ class Phrase(Genome):
         mutations = [
             Phrase.reverse,
             Phrase.rotate,
-            Phrase.genetic_repair,
-            Phrase.super_phrase,
-            Phrase.lick_thinner,
-            Phrase.orphan,
+            # Phrase.genetic_repair,
+            # Phrase.super_phrase,
+            # Phrase.lick_thinner,
+            # Phrase.orphan,
         ]
 
         # do nothing to parents or baby1.
@@ -498,50 +498,81 @@ def automatic_fitness(phrases, measures, metadata, ff):
     phrase_genomes = phrases.genomes
     population_stream = music21.stream.Stream()
     population_stream.append(music21.tempo.MetronomeMark(number=metadata.tempo))
-    total_population_fitness = 0
     last_note = None
+    total_population_fitness = 0
+    total_population_length = 0
+    iters = 0
     for phrase in phrase_genomes:
         measure_metadata = deepcopy(metadata)
 
+        cumulative_fitness = 0
+        cumulative_length = 0
+        last_length = 0
+        last_fitness = None
+        stream_to_evaluate = music21.stream.Stream()
         for measure_idx in phrase:
+            iters += 1
             measure = measures.genomes[measure_idx]
             measure_lead_part, _, beat_idx, chord_idx = measure_to_parts(measure, measure_metadata)
+            stream_to_evaluate.append(measure_lead_part)
 
             measure_metadata.chords = measure_metadata.chords[chord_idx:]
             if len(measure_metadata.chords) == 0:
                 measure_metadata.chords = deepcopy(metadata.chords)
             measure_metadata.chords[0].beats -= beat_idx
 
-            mf = music21.midi.translate.streamToMidiFile(measure_lead_part.flat)
+            mf = music21.midi.translate.streamToMidiFile(stream_to_evaluate.flat)
             tmp_midi_name = '.tmp.mid'
             mf.open(tmp_midi_name, 'wb')
             mf.write()
             mf.close()
-            f = ff.evaluate_fitness(tmp_midi_name)
-            if f is None:
+            cumulative_fitness, cumulative_length = ff.evaluate_fitness(tmp_midi_name)
+
+            # TODO: this is a workaround for a bug and should be removed eventually
+            if cumulative_fitness is None:
                 sys.exit("No Fitness Returned")
             else:
-                f = int(f)
-            measure.fitness += f
-            phrase.fitness += f
-            total_population_fitness += f
+                cumulative_fitness = int(cumulative_fitness)
 
-            # add penalty for empty bars
-            empty = True
-            for note in measure:
-                if 0 < note < 15:
-                    empty = False
-            if empty:
-                measure.fitness -= 100
+            # compute change in fitness caused by the new measure
+            delta_length = cumulative_length - last_length
+            if last_fitness:
+                delta_fitness = cumulative_fitness - last_fitness
+            else:
+                delta_fitness = cumulative_fitness
 
-            # penalty for too many 16th notes
-            # for note in measure:
-            #     if last_note:
-            #         if (0 < note < 15) and (0 < last_note < 15):
-            #             measure.fitness -= 10
-            #     last_note = note
+            if delta_length == 0:
+                # emergency repair! empty measure!
+                print("Emergency repair on empty measure:", measure)
+                measure[0] = 1
+            else:
 
-    print(total_population_fitness)
+                last_fitness = cumulative_fitness
+                last_length = cumulative_length
+                scaled_fitness = int(100 * delta_fitness/delta_length)
+                measure.fitness = scaled_fitness
+                phrase.fitness = scaled_fitness
+                # print("%i out of %i" % (iters, phrases.size * phrase_genomes[0].length))
+
+                # add penalty for empty bars
+                empty = True
+                for note in measure:
+                    if 0 < note < 15:
+                        empty = False
+                if empty:
+                    measure.fitness -= 100
+
+                # penalty for too many 16th notes
+                # for note in measure:
+                #     if last_note:
+                #         if (0 < note < 15) and (0 < last_note < 15):
+                #             measure.fitness -= 10
+                #     last_note = note
+
+        total_population_fitness += cumulative_fitness
+        total_population_length += cumulative_length
+
+    print('fitness:', total_population_fitness, ' length:', total_population_length)
 
 
 def main():
@@ -549,7 +580,7 @@ def main():
         print("waiting 10 seconds so you can attach a debugger...")
         time.sleep(10)
 
-    measure_pop_size = 32
+    measure_pop_size = 64
     smallest_note = 8
     # one measure of each chord for 4 beats each
     chords = [MyChord('E3', 4, 'min7', [0, 3, 7, 14]),
@@ -576,7 +607,7 @@ def main():
         m.initialize()
         measures.genomes.append(m)
 
-    phrases = PhrasePopulation(16)
+    phrases = PhrasePopulation(32)
     for itr in range(phrases.size):
         p = Phrase(length=measures_per_phrase, number_size=phrase_genome_len)
         p.initialize()
@@ -645,6 +676,7 @@ def main():
                 phrases = run(phrases, Phrase.mutate, manual_fitness, measures, metadata, nbinput)
             else:
                 phrases = run(phrases, Phrase.mutate, automatic_fitness, measures, metadata, ff)
+                # phrases = run(phrases, None, automatic_fitness, measures, metadata, ff)
 
         measures.save('measures.np')
         phrases.save('phrases.np')
