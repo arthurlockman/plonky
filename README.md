@@ -15,7 +15,6 @@ do this:
 The easiest way to train Plonky is to use our Docker image. To build an image and run a container, 
 change directories to the project root and run:
 
-    docker build -t plonky .
-    docker run -it -v .:/plonky plonky
+    docker run -it -v .:/plonky arthurlockman/plonky
 
 This will build the docker image, and run a new container with the project root mapped to `/plonky`.
