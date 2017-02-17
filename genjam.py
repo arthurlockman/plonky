@@ -5,7 +5,7 @@ import sys
 import time
 from copy import deepcopy
 from math import log
-
+import csv
 import music21
 import numpy as np
 from bitstring import BitStream
@@ -482,6 +482,15 @@ def manual_fitness(phrase_pop, measures, metadata, nbinput):
                 print("%i %i %i" % (phrase_idx, measure_idx, beat_idx))
 
         d['raw_count'] += 1
+
+        def manual_data_tracking():
+            data = [i,current_measure,current_measure.fitness,current_phrase,current_phrase.fitness]
+            csvfile = "<path to output csv or txt>"
+            with open(csvfile, "w") as output:
+                writer = csv.writer(output, lineterminator='\n')
+                writer.writerows(data)
+
+        manual_data_tracking()
 
     prescalar = 8
     wait_ms = metadata.ms_per_beat / prescalar
