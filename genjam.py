@@ -12,7 +12,7 @@ from bitstring import BitStream
 
 from converter import Metadata, phrase_to_parts, MyChord, measure_to_parts
 from fitness import FitnessFunction
-from ga import Genome, Population, run, uint_to_bit_str
+from ga import Genome, Population, mutate_and_cross, uint_to_bit_str
 from non_blocking_input import NonBlockingInput
 
 
@@ -212,7 +212,7 @@ class Phrase(Genome):
         new_g = []
         for i in range(g.length):
             # 3 measure tourney
-            max_f = 0
+            max_f = -sys.maxint
             max_measure = 0
             for _ in range(3):
                 m = np.random.randint(measure_population.size)
@@ -279,10 +279,10 @@ class Phrase(Genome):
         mutations = [
             Phrase.reverse,
             Phrase.rotate,
-            # Phrase.genetic_repair,
-            # Phrase.super_phrase,
-            # Phrase.lick_thinner,
-            # Phrase.orphan,
+            Phrase.genetic_repair,
+            Phrase.super_phrase,
+            Phrase.lick_thinner,
+            Phrase.orphan,
         ]
 
         # do nothing to parents or baby1.
@@ -544,12 +544,13 @@ def automatic_fitness(phrases, measures, metadata, ff):
             if delta_length == 0:
                 # emergency repair! empty measure!
                 print("Emergency repair on empty measure:", measure)
-                measure[0] = 1
+                measure.initialize()
             else:
 
                 last_fitness = cumulative_fitness
                 last_length = cumulative_length
-                scaled_fitness = int(100 * delta_fitness/delta_length)
+                # TODO: should be delta_fitness not cumulative_fitness
+                scaled_fitness = int(10 * cumulative_fitness)
                 measure.fitness = scaled_fitness
                 phrase.fitness = scaled_fitness
                 # print("%i out of %i" % (iters, phrases.size * phrase_genomes[0].length))
@@ -660,23 +661,17 @@ def main():
         measures.save('in_progress_measures.np')
         phrases.save('in_progress_phrases.np')
 
-        # occasionally, don't use genetic operators and just build up fitness scores
-        if itr == 0:
-            if manual:
-                manual_fitness(phrases, measures, metadata, nbinput)
-            else:
-                automatic_fitness(phrases, measures, metadata, ff)
-        # elif itr % 5 == 0:
-            # assign_random_fitness(phrases, measures, metadata)
-            # assign_fitness_penalize_jumps(phrases, measures, metadata)
-            # assign_fitness_penalize_rests(phrases, measures, metadata)
+        # assign fitness
+        if manual:
+            manual_fitness(phrases, measures, metadata, nbinput)
         else:
-            measures = run(measures, Measure.mutate, None)
-            if manual:
-                phrases = run(phrases, Phrase.mutate, manual_fitness, measures, metadata, nbinput)
-            else:
-                phrases = run(phrases, Phrase.mutate, automatic_fitness, measures, metadata, ff)
-                # phrases = run(phrases, None, automatic_fitness, measures, metadata, ff)
+            automatic_fitness(phrases, measures, metadata, ff)
+
+        # do mutation on measures
+        measures = mutate_and_cross(measures, Measure.mutate)
+        phrases = mutate_and_cross(phrases, Phrase.mutate, measures, metadata, ff)
+
+        # TODO: Initialize fitness of new measure to the mean of the not-new measures?
 
         measures.save('measures.np')
         phrases.save('phrases.np')

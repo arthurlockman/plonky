@@ -26,6 +26,10 @@ def run(current_population, mutate_method, fitness_method, *args):
     if fitness_method:
         fitness_method(current_population, *args)
 
+    mutate_and_cross(current_population, mutate_method, *args)
+
+
+def mutate_and_cross(current_population, mutate_method, *args):
     selected_genomes = current_population.select()
     unmodified_population = deepcopy(current_population)
     new_genomes = []
