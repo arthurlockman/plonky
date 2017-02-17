@@ -484,11 +484,17 @@ def manual_fitness(phrase_pop, measures, metadata, nbinput):
         d['raw_count'] += 1
 
         def manual_data_tracking():
-            data = [i,current_measure,current_measure.fitness,current_phrase,current_phrase.fitness]
+            measure_numbers = current_measure.as_numpy()
+            #phrase_numbers = current_phrase.as_numpy()
+            measure_numbers_padded = [str(item).zfill(2) for item in measure_numbers]
+            #phrase_numbers_padded = [str(item).zfill(2) for item in phrase_numbers]
+            measure_hash = ''.join(map(str,measure_numbers_padded))
+            #phrase_hash = ''.join(map(str(phrase_numbers_padded)))
+            critique = [i, measure_hash]
             csvfile = "<path to output csv or txt>"
             with open(csvfile, "w") as output:
                 writer = csv.writer(output, lineterminator='\n')
-                writer.writerows(data)
+                writer.writerows(critique)
 
         manual_data_tracking()
 
