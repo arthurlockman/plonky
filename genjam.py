@@ -426,19 +426,23 @@ def assign_fitness_penalize_rests(phrase_pop, measures, metadata):
 
 
 def manual_fitness(phrase_pop, measures, metadata, nbinput):
-    # in beats
+    # setup logging
+    log = {'phrases': {},
+           'measures': {}}
+
     phrase_genomes = phrase_pop.genomes
-    feedback_offset = 2
+    feedback_offset = 2  # in beats
     population_lead_part = music21.stream.Part()
     population_backing_part = music21.stream.Part()
     population_lead_part.append(music21.instrument.Trumpet())
     population_backing_part.append(music21.instrument.Piano())
+
     for idx, phrase in enumerate(phrase_genomes):
         phrase_lead, phrase_backing = phrase_to_parts(phrase, measures, metadata, accompany=True)
         population_lead_part.append(phrase_lead)
         population_backing_part.append(phrase_backing)
 
-    d = {'raw_count': 0}
+    d = {'raw_count': 0, 'measure_feedback': [], 'phrase_feedback': []}
 
     def get_feedback(args):
         verbose, _prescalar = args
@@ -483,20 +487,37 @@ def manual_fitness(phrase_pop, measures, metadata, nbinput):
 
         d['raw_count'] += 1
 
-        def manual_data_tracking():
-            measure_numbers = current_measure.as_numpy()
-            #phrase_numbers = current_phrase.as_numpy()
-            measure_numbers_padded = [str(item).zfill(2) for item in measure_numbers]
-            #phrase_numbers_padded = [str(item).zfill(2) for item in phrase_numbers]
-            measure_hash = ''.join(map(str,measure_numbers_padded))
-            #phrase_hash = ''.join(map(str(phrase_numbers_padded)))
-            critique = [i, measure_hash]
-            csvfile = "<path to output csv or txt>"
-            with open(csvfile, "w") as output:
-                writer = csv.writer(output, lineterminator='\n')
-                writer.writerows(critique)
+        measure_numbers = current_measure.as_numpy()
+        phrase_numbers = current_phrase.as_numpy()
+        measure_numbers_padded = [str(item).zfill(2) for item in measure_numbers]
+        phrase_numbers_padded = [str(item).zfill(2) for item in phrase_numbers]
+        measure_hash = ''.join(measure_numbers_padded)
+        phrase_hash = ''.join(phrase_numbers_padded)
 
-        manual_data_tracking()
+        if beat_idx % beats_per_measure == 0:
+            d['measure_feedback'] = []
+        if beat_idx % beats_per_phrase == 0:
+            d['phrase_feedback'] = []
+
+        if i == 'g':
+            d['measure_feedback'].append((beat_idx % beats_per_measure, 1))
+            d['phrase_feedback'].append((measure_idx % measures_per_phrase, 1))
+            feedback = True
+        elif i == 'b':
+            d['measure_feedback'].append((beat_idx % beats_per_measure, -1))
+            d['phrase_feedback'].append((measure_idx % measures_per_phrase, -1))
+            feedback = True
+        else:
+            feedback = False
+
+        if feedback:
+            if measure_hash not in log['measures']:
+                log['measures'][measure_hash] = []
+            log['measures'][measure_hash].append(d['measure_feedback'])
+
+            if phrase_hash not in log['phrases']:
+                log['phrases'][phrase_hash] = []
+            log['phrases'][phrase_hash].append(d['phrase_feedback'])
 
     prescalar = 8
     wait_ms = metadata.ms_per_beat / prescalar
@@ -507,6 +528,16 @@ def manual_fitness(phrase_pop, measures, metadata, nbinput):
     sp = music21.midi.realtime.StreamPlayer(population_stream)
     sp.play(busyFunction=get_feedback, busyArgs=[False, prescalar], busyWaitMilliseconds=wait_ms)
     # send_stream_to_virtual_midi(metadata.midi_out, phrase_stream, metadata)
+
+    with open('saves/phrase_feedback.csv', 'wb') as csv_file:
+        writer = csv.writer(csv_file)
+        for key, value in log['phrases'].items():
+            writer.writerow([key, value])
+
+    with open('saves/measure_feedback.csv', 'wb') as csv_file:
+        writer = csv.writer(csv_file)
+        for key, value in log['measures'].items():
+            writer.writerow([key, value])
 
 
 def automatic_fitness(phrases, measures, metadata, ff):
@@ -560,29 +591,17 @@ def main():
         print("waiting 10 seconds so you can attach a debugger...")
         time.sleep(10)
 
-    measure_pop_size = 256
-    smallest_note = 16
+    measure_pop_size = 8
+    smallest_note = 8
     # one measure of each chord for 4 beats each
     chords = [MyChord('E3', 4, 'min7', [0, 3, 7, 14]),
-              MyChord('G3', 4, 'maj7', [0, 4, 7, 10]),
-              MyChord('D3', 4, 'maj7', [0, 4, 7, 14]),
-              MyChord('D3', 4, 'maj7', [0, 4, 7, 14]),
-              MyChord('E3', 4, 'min7', [0, 3, 7, 14]),
-              MyChord('G3', 4, 'maj7', [0, 4, 7, 10]),
-              MyChord('D3', 4, 'maj7', [0, 4, 7, 14]),
-              MyChord('D3', 4, 'maj7', [0, 4, 7, 14]),
-              MyChord('E3', 4, 'min7', [0, 3, 7, 14]),
-              MyChord('G3', 4, 'maj7', [0, 4, 7, 10]),
-              MyChord('D3', 4, 'maj7', [0, 4, 7, 14]),
-              MyChord('D3', 4, 'maj7', [0, 4, 7, 14]),
-              MyChord('E3', 4, 'min7', [0, 3, 7, 14]),
               MyChord('G3', 4, 'maj7', [0, 4, 7, 10]),
               MyChord('D3', 4, 'maj7', [0, 4, 7, 14]),
               MyChord('D3', 4, 'maj7', [0, 4, 7, 14]),
               ]
 
     metadata = Metadata('C', chords, '4/4', 140, smallest_note, 80)
-    measures_per_phrase = 16
+    measures_per_phrase = 4
 
     phrase_genome_len = log(measure_pop_size, 2)
     if not phrase_genome_len.is_integer():
@@ -595,7 +614,7 @@ def main():
         m.initialize()
         measures.genomes.append(m)
 
-    phrases = PhrasePopulation(32)
+    phrases = PhrasePopulation(8)
     for itr in range(phrases.size):
         p = Phrase(length=measures_per_phrase, number_size=phrase_genome_len)
         p.initialize()
