@@ -702,7 +702,7 @@ def main():
 
     if '--play' in sys.argv:
         print("playing generation")
-        phrases.play(measures, metadata, best_n_phrases=16)
+        phrases.play(measures, metadata)
         return
     elif '--render' in sys.argv:
         print("rendering generation")
