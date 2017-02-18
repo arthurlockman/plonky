@@ -8,7 +8,7 @@ from math import log
 import csv
 import music21
 import numpy as np
-from bitstring import BitStream
+from bitstring import BitStream, BitArray
 
 from converter import Metadata, phrase_to_parts, MyChord, measure_to_parts
 from fitness import FitnessFunction
@@ -155,8 +155,24 @@ class Measure(Genome):
             g[idx] = new_g[idx]
 
     @staticmethod
+    def bit_flip(g):
+        bit_idx = np.random.randint(g.number_size * g.length)
+        Measure._bit_flip(g, bit_idx)
+
+    @staticmethod
+    def _bit_flip(g, bit_idx):
+        gene_idx = bit_idx // g.length
+        gene_bit_idx = bit_idx % g.length
+        gene = g[gene_idx]
+        a = BitArray(uint=gene, length=g.number_size)
+        a._invert(gene_bit_idx)
+
+        g[gene_idx] = a.uint
+
+    @staticmethod
     def mutate(parent1, parent2, baby1, baby2, population):
         mutations = [
+            Measure.bit_flip,
             Measure.reverse,
             Measure.rotate,
             Measure.invert,
@@ -378,12 +394,19 @@ class PhrasePopulation(Population):
         midi_file.write()
         midi_file.close()
 
-    def play(self, measures, metadata):
+    def play(self, measures, metadata, best_n_phrases=None):
+
+        if best_n_phrases:
+            # sort and pick the best n phrases
+            genomes = sorted(self.genomes, key=lambda p: p.fitness)[:best_n_phrases]
+        else:
+            genomes = self.genomes
+
         population_lead_part = music21.stream.Part()
         population_backing_part = music21.stream.Part()
         population_lead_part.append(music21.instrument.Trumpet())
         population_backing_part.append(music21.instrument.Piano())
-        for phrase in self.genomes:
+        for phrase in genomes:
             phrase_lead, phrase_backing = phrase_to_parts(phrase, measures, metadata, accompany=True)
             population_lead_part.append(phrase_lead)
             population_backing_part.append(phrase_backing)
@@ -679,7 +702,7 @@ def main():
 
     if '--play' in sys.argv:
         print("playing generation")
-        phrases.play(measures, metadata)
+        phrases.play(measures, metadata, best_n_phrases=8)
         return
     elif '--render' in sys.argv:
         print("rendering generation")
