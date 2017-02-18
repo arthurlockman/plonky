@@ -734,7 +734,7 @@ def main():
         ff = None
         print("Using manual fitness function")
         nbinput = NonBlockingInput()
-        metadata.backing_velocity = 8
+        metadata.backing_velocity = 6
     else:
         manual = False
         nbinput = None
