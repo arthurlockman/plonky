@@ -156,13 +156,13 @@ class Measure(Genome):
 
     @staticmethod
     def bit_flip(g):
-        bit_idx = np.random.randint(g.number_size * g.length)
+        bit_idx = np.random.randint(0, g.number_size * g.length)
         Measure._bit_flip(g, bit_idx)
 
     @staticmethod
     def _bit_flip(g, bit_idx):
-        gene_idx = bit_idx // g.length
-        gene_bit_idx = bit_idx % g.length
+        gene_idx = bit_idx // g.number_size
+        gene_bit_idx = bit_idx % g.number_size
         gene = g[gene_idx]
         a = BitArray(uint=gene, length=g.number_size)
         a._invert(gene_bit_idx)
@@ -702,7 +702,7 @@ def main():
 
     if '--play' in sys.argv:
         print("playing generation")
-        phrases.play(measures, metadata, best_n_phrases=8)
+        phrases.play(measures, metadata, best_n_phrases=16)
         return
     elif '--render' in sys.argv:
         print("rendering generation")
@@ -742,11 +742,16 @@ def main():
         measures.save('in_progress_measures.np')
         phrases.save('in_progress_phrases.np')
 
-        # assign fitness
-        if manual:
-            manual_fitness(phrases, measures, metadata, nbinput)
+        if itr % 4 == 0:
+            assign_fitness_penalize_jumps(phrases, measures, metadata)
+        # elif (itr + 1) % 4 == 0:
+        #     manual_fitness(phrases, measures, metadata, nbinput)
         else:
-            automatic_fitness(phrases, measures, metadata, ff)
+            # assign fitness
+            if manual:
+                manual_fitness(phrases, measures, metadata, nbinput)
+            else:
+                automatic_fitness(phrases, measures, metadata, ff)
 
         # do mutation on measures
         measures = mutate_and_cross(measures, Measure.mutate)

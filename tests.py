@@ -142,12 +142,13 @@ class MutationTests(unittest.TestCase):
         self.assertEqual(m[3], 15)
 
     def test_meausre_bit_flip(self):
-        m = Measure(4, 4)
+        m = Measure(5, 4)
         m.initialize()
         m[0] = 0b0000
         m[1] = 0b0001
         m[2] = 0b0010
         m[3] = 0b0011
+        m[4] = 0b0100
         Measure._bit_flip(m, 2)
         Measure._bit_flip(m, 5)
         Measure._bit_flip(m, 8)
@@ -158,6 +159,7 @@ class MutationTests(unittest.TestCase):
         self.assertEqual(m[1], 0b0101)
         self.assertEqual(m[2], 0b1010)
         self.assertEqual(m[3], 0b1001)
+        self.assertEqual(m[4], 0b0100)
 
     def test_phrase_reverse(self):
         p = Phrase(4, 4)
