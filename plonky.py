@@ -379,16 +379,20 @@ class PhrasePopulation(Population):
     def render_midi(self, measures, metadata, filename):
         population_lead_part = music21.stream.Part()
         population_backing_part = music21.stream.Part()
+        population_bass_part = music21.stream.Part()
         population_lead_part.append(music21.instrument.Trumpet())
         population_backing_part.append(music21.instrument.Piano())
+        population_bass_part.append(music21.instrument.ElectricBass())
         for phrase in self.genomes:
-            phrase_lead, phrase_backing = phrase_to_parts(phrase, measures, metadata, accompany=True)
-            population_lead_part.append(phrase_lead)
-            population_backing_part.append(phrase_backing)
+            lead_part, backing_part, bass_part = phrase_to_parts(phrase, measures, metadata, accompany=True)
+            population_lead_part.append(lead_part)
+            population_backing_part.append(backing_part)
+            population_bass_part.append(bass_part)
         population_stream = music21.stream.Stream()
         population_stream.append(music21.tempo.MetronomeMark(number=metadata.tempo))
         population_stream.append(population_lead_part.flat)
         population_stream.append(population_backing_part.flat)
+        population_stream.append(population_bass_part.flat)
         midi_file = music21.midi.translate.streamToMidiFile(population_stream)
         midi_file.open(filename, 'wb')
         midi_file.write()
@@ -404,16 +408,20 @@ class PhrasePopulation(Population):
 
         population_lead_part = music21.stream.Part()
         population_backing_part = music21.stream.Part()
+        population_bass_part = music21.stream.Part()
         population_lead_part.append(music21.instrument.Trumpet())
         population_backing_part.append(music21.instrument.Piano())
+        population_bass_part.append(music21.instrument.ElectricBass())
         for phrase in genomes:
-            phrase_lead, phrase_backing = phrase_to_parts(phrase, measures, metadata, accompany=True)
-            population_lead_part.append(phrase_lead)
-            population_backing_part.append(phrase_backing)
+            lead_part, backing_part, bass_part = phrase_to_parts(phrase, measures, metadata, accompany=True)
+            population_lead_part.append(lead_part)
+            population_backing_part.append(backing_part)
+            population_bass_part.append(bass_part)
         population_stream = music21.stream.Stream()
         population_stream.append(music21.tempo.MetronomeMark(number=metadata.tempo))
         population_stream.append(population_lead_part.flat)
         population_stream.append(population_backing_part.flat)
+        population_stream.append(population_bass_part.flat)
 
         sp = music21.midi.realtime.StreamPlayer(population_stream)
         sp.play()
@@ -469,13 +477,16 @@ def manual_fitness(phrase_pop, measures, metadata, nbinput):
     feedback_offset = 2  # in beats
     population_lead_part = music21.stream.Part()
     population_backing_part = music21.stream.Part()
+    population_bass_part = music21.stream.Part()
     population_lead_part.append(music21.instrument.Trumpet())
     population_backing_part.append(music21.instrument.Piano())
+    population_bass_part.append(music21.instrument.ElectricBass())
 
     for idx, phrase in enumerate(phrase_genomes):
-        phrase_lead, phrase_backing = phrase_to_parts(phrase, measures, metadata, accompany=True)
-        population_lead_part.append(phrase_lead)
-        population_backing_part.append(phrase_backing)
+        lead_part, backing_part, bass_part = phrase_to_parts(phrase, measures, metadata, accompany=True)
+        population_lead_part.append(lead_part)
+        population_backing_part.append(backing_part)
+        population_bass_part.append(bass_part)
 
     d = {'raw_count': 0, 'measure_feedback': [], 'phrase_feedback': []}
 
@@ -560,6 +571,7 @@ def manual_fitness(phrase_pop, measures, metadata, nbinput):
     population_stream.append(music21.tempo.MetronomeMark(number=metadata.tempo))
     population_stream.append(population_lead_part.flat)
     population_stream.append(population_backing_part.flat)
+    population_stream.append(population_bass_part.flat)
     sp = music21.midi.realtime.StreamPlayer(population_stream)
     sp.play(busyFunction=get_feedback, busyArgs=[False, prescalar], busyWaitMilliseconds=wait_ms)
     # send_stream_to_virtual_midi(metadata.midi_out, phrase_stream, metadata)
@@ -594,7 +606,7 @@ def automatic_fitness(phrases, measures, metadata, ff):
         for measure_idx in phrase:
             iters += 1
             measure = measures.genomes[measure_idx]
-            measure_lead_part, _, beat_idx, chord_idx = measure_to_parts(measure, measure_metadata)
+            measure_lead_part, _, _, beat_idx, chord_idx = measure_to_parts(measure, measure_metadata)
             stream_to_evaluate.append(measure_lead_part)
 
             measure_metadata.chords = measure_metadata.chords[chord_idx:]
@@ -662,17 +674,17 @@ def main():
         print("waiting 10 seconds so you can attach a debugger...")
         time.sleep(10)
 
-    measure_pop_size = 512
-    smallest_note = 16
+    measure_pop_size = 32
+    smallest_note = 8
     # one measure of each chord for 4 beats each
-    chords = [MyChord('E3', 4, 'min7', [0, 3, 7, 14]),
-              MyChord('G3', 4, 'maj7', [0, 4, 7, 10]),
-              MyChord('D3', 4, 'maj7', [0, 4, 7, 14]),
-              MyChord('D3', 4, 'maj7', [0, 4, 7, 14]),
-              MyChord('E3', 4, 'min7', [0, 3, 7, 14]),
-              MyChord('G3', 4, 'maj7', [0, 4, 7, 10]),
-              MyChord('D3', 4, 'maj7', [0, 4, 7, 14]),
-              MyChord('D3', 4, 'maj7', [0, 4, 7, 14]),
+    chords = [MyChord('A3', 4, 'min7', [0, 3, 7, 10], [0, 2, 3, 4]),
+              MyChord('D3', 4, 'maj7', [7, 10, 14, 16], [12, 0, 2, 4]),
+              MyChord('G3', 4, 'maj7', [0, 4, 7, 11], [0, 4, 7, 8]),
+              MyChord('E3', 4, 'maj7', [4, 7, 10, 12], [12, 7, 12, 7]),
+              MyChord('A3', 4, 'min7', [0, 3, 7, 10], [0, 2, 3, 4]),
+              MyChord('D3', 4, 'maj7', [7, 10, 14, 16], [12, 0, 2, 4]),
+              MyChord('G3', 4, 'maj7', [0, 4, 7, 11], [0, 4, 7, 8]),
+              MyChord('E3', 4, 'maj7', [4, 7, 10, 12], [12, 7, 12, 7]),
               ]
 
     metadata = Metadata('C', chords, '4/4', 140, smallest_note, 80)
@@ -689,7 +701,7 @@ def main():
         m.initialize()
         measures.genomes.append(m)
 
-    phrases = PhrasePopulation(64)
+    phrases = PhrasePopulation(12)
     for itr in range(phrases.size):
         p = Phrase(length=measures_per_phrase, number_size=phrase_genome_len)
         p.initialize()
@@ -722,7 +734,7 @@ def main():
         ff = None
         print("Using manual fitness function")
         nbinput = NonBlockingInput()
-        metadata.backing_velocity = 10
+        metadata.backing_velocity = 8
     else:
         manual = False
         nbinput = None
