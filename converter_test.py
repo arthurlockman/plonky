@@ -1,7 +1,7 @@
 import music21
 
 from converter import Metadata, phrase_to_parts, measure_to_parts, MyChord
-from genjam import MeasurePopulation, Measure, Phrase
+from plonky import MeasurePopulation, Measure, Phrase
 
 
 def main():

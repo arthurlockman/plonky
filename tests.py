@@ -1,8 +1,8 @@
+from __future__ import print_function, division
+
 import unittest
 from copy import deepcopy
-from converter import measure_to_parts, phrase_to_parts, chord_shapes, MyChord, Metadata
-from genjam import Measure, Phrase, PhrasePopulation, MeasurePopulation
-import music21
+from plonky import Measure, Phrase, PhrasePopulation, MeasurePopulation
 
 class MutationTests(unittest.TestCase):
 
@@ -127,6 +127,20 @@ class MutationTests(unittest.TestCase):
         self.assertEqual(m[2], 6)
         self.assertEqual(m[3], 8)
 
+    def test_measure_stretch(self):
+        m = Measure(4, 4)
+        m.initialize()
+        m[0] = 0
+        m[1] = 1
+        m[2] = 2
+        m[3] = 3
+        Measure.time_stretch(m)
+
+        self.assertEqual(m[0], 0)
+        self.assertEqual(m[1], 15)
+        self.assertEqual(m[2], 1)
+        self.assertEqual(m[3], 15)
+
     def test_phrase_reverse(self):
         p = Phrase(4, 4)
         p.initialize()
@@ -242,22 +256,3 @@ class MutationTests(unittest.TestCase):
 
         # not a very good test...
         self.assertNotEquals(p, original_p)
-
-class ConverterTests(unittest.TestCase):
-
-    def test_conversion_4_4_8ths(self):
-        chords = [MyChord('C3', 4, 'maj'), MyChord('A2', 4, 'min'), MyChord('F2', 4, 'maj'), MyChord('G2', 4, 'maj')]
-        smallest_note = 8
-        metadata = Metadata('C', chords, '4/4', 100, smallest_note)
-
-        for i in range(200):
-            m = Measure(metadata.notes_per_measure, 4)
-            m.initialize()
-            stream, _, _ = measure_to_parts(m, metadata)
-
-            measure_len = 0
-            for event in stream:
-                if isinstance(event, music21.note.Note) or isinstance(event, music21.note.Rest):
-                    measure_len += event.quarterLength
-
-            self.assertEqual(measure_len, 4)

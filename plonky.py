@@ -144,6 +144,17 @@ class Measure(Genome):
                 g[idx] = tmp
 
     @staticmethod
+    def time_stretch(g):
+        # double the length of all notes, cutting off the last half of the measure
+        new_g = []
+        for i in range(g.length//2):
+            new_g.append(g[i])
+            new_g.append(15)
+
+        for idx in range(g.length):
+            g[idx] = new_g[idx]
+
+    @staticmethod
     def mutate(parent1, parent2, baby1, baby2, population):
         mutations = [
             Measure.reverse,
@@ -152,6 +163,7 @@ class Measure(Genome):
             Measure.sort_ascending,
             Measure.sort_descending,
             Measure.transpose,
+            Measure.time_stretch,
         ]
 
         # do nothing to parents or baby1.
@@ -627,8 +639,8 @@ def main():
         print("waiting 10 seconds so you can attach a debugger...")
         time.sleep(10)
 
-    measure_pop_size = 64
-    smallest_note = 8
+    measure_pop_size = 512
+    smallest_note = 16
     # one measure of each chord for 4 beats each
     chords = [MyChord('E3', 4, 'min7', [0, 3, 7, 14]),
               MyChord('G3', 4, 'maj7', [0, 4, 7, 10]),
@@ -654,7 +666,7 @@ def main():
         m.initialize()
         measures.genomes.append(m)
 
-    phrases = PhrasePopulation(16)
+    phrases = PhrasePopulation(64)
     for itr in range(phrases.size):
         p = Phrase(length=measures_per_phrase, number_size=phrase_genome_len)
         p.initialize()
