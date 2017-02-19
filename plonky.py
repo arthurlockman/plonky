@@ -674,8 +674,8 @@ def main():
         print("waiting 10 seconds so you can attach a debugger...")
         time.sleep(10)
 
-    measure_pop_size = 32
-    smallest_note = 8
+    measure_pop_size = 512
+    smallest_note = 16
     # one measure of each chord for 4 beats each
     chords = [MyChord('A3', 4, 'min7', [0, 3, 7, 10], [0, 2, 3, 4]),
               MyChord('D3', 4, 'maj7', [7, 10, 14, 16], [12, 0, 2, 4]),
@@ -687,7 +687,7 @@ def main():
               MyChord('E3', 4, 'maj7', [4, 7, 10, 12], [12, 7, 12, 7]),
               ]
 
-    metadata = Metadata('C', chords, '4/4', 140, smallest_note, 80)
+    metadata = Metadata('C', chords, '4/4', 140, smallest_note, 60)
     measures_per_phrase = 8
 
     phrase_genome_len = log(measure_pop_size, 2)
@@ -701,7 +701,7 @@ def main():
         m.initialize()
         measures.genomes.append(m)
 
-    phrases = PhrasePopulation(12)
+    phrases = PhrasePopulation(64)
     for itr in range(phrases.size):
         p = Phrase(length=measures_per_phrase, number_size=phrase_genome_len)
         p.initialize()
@@ -714,6 +714,7 @@ def main():
 
     if '--play' in sys.argv:
         print("playing generation")
+        metadata.backing_velocity = 8
         phrases.play(measures, metadata)
         return
     elif '--render' in sys.argv:
@@ -734,7 +735,7 @@ def main():
         ff = None
         print("Using manual fitness function")
         nbinput = NonBlockingInput()
-        metadata.backing_velocity = 6
+        metadata.backing_velocity = 8
     else:
         manual = False
         nbinput = None
