@@ -763,8 +763,8 @@ def main():
 
         if itr % 4 == 0:
             assign_fitness_penalize_jumps(phrases, measures, metadata)
-        elif (itr + 1) % 4 == 0:
-            manual_fitness(phrases, measures, metadata, nbinput)
+        # elif (itr + 1) % 4 == 0:
+        #     manual_fitness(phrases, measures, metadata, nbinput)
         else:
             # assign fitness
             if manual:
