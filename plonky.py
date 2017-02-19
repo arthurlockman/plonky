@@ -4,17 +4,16 @@ import os
 import sys
 import time
 from copy import deepcopy
-from math import log
+from math import log, ceil
 import csv
 import music21
 import numpy as np
 from bitstring import BitStream, BitArray
 
-from converter import Metadata, phrase_to_parts, MyChord, measure_to_parts
+from converter import Metadata, phrase_to_parts, MyChord, measure_to_parts, SUSTAIN, REST
 from fitness import FitnessFunction
 from ga import Genome, Population, mutate_and_cross, uint_to_bit_str
 from non_blocking_input import NonBlockingInput
-
 
 class Measure(Genome):
 
@@ -24,14 +23,17 @@ class Measure(Genome):
             e = np.random.rand()
             if e < 0.2:
                 # rest
-                bit_str += uint_to_bit_str(value=0, num_bits=4)
+                new_bits = uint_to_bit_str(value=REST, num_bits=self.number_size)
+                bit_str += new_bits
             elif e < 0.4:
                 # hold
-                bit_str += uint_to_bit_str(value=15, num_bits=4)
+                new_bits = uint_to_bit_str(value=SUSTAIN, num_bits=self.number_size)
+                bit_str += new_bits
             else:
                 # new note
-                new_note_pitch = np.random.randint(1, 15)
-                bit_str += uint_to_bit_str(new_note_pitch, self.number_size)
+                new_note_pitch = np.random.randint(REST + 1, SUSTAIN)
+                new_bits = uint_to_bit_str(value=new_note_pitch, num_bits=self.number_size)
+                bit_str += new_bits
 
         self.data = BitStream(bin=bit_str)
 
@@ -63,25 +65,25 @@ class Measure(Genome):
     @staticmethod
     def invert(g, population=None):
         for i in range(g.length):
-            g[i] = 15 - g[i]
+            g[i] = SUSTAIN - g[i]
 
     @staticmethod
     def sort_ascending(g, population=None):
         actual_notes = []
-        zeros_and_fifteens = []
+        rests_and_sustains = []
 
-        # pull out the 0's and 15's
+        # pull out the rests and sustains
         for i in range(g.length):
-            if g[i] == 0 or g[i] == 15:
-                zeros_and_fifteens.append((i, g[i]))
+            if g[i] == REST or g[i] == SUSTAIN:
+                rests_and_sustains.append((i, g[i]))
             else:
                 actual_notes.append(g[i])
 
         # sort the real notes
         sorted_notes = sorted(actual_notes)
 
-        # put the 0's and 15's back
-        for i, x in zeros_and_fifteens:
+        # put the rests and sustains back
+        for i, x in rests_and_sustains:
             sorted_notes.insert(i, x)
 
         # copy the values back to g
@@ -91,20 +93,20 @@ class Measure(Genome):
     @staticmethod
     def sort_descending(g, population=None):
         actual_notes = []
-        zeros_and_fifteens = []
+        rests_and_sustains = []
 
-        # pull out the 0's and 15's
+        # pull out the rests and sustainss
         for i in range(g.length):
-            if g[i] == 0 or g[i] == 15:
-                zeros_and_fifteens.append((i, g[i]))
+            if g[i] == REST or g[i] == SUSTAIN:
+                rests_and_sustains.append((i, g[i]))
             else:
                 actual_notes.append(g[i])
 
         # sort the real notes
         sorted_notes = sorted(actual_notes, key=lambda n: -n)
 
-        # put the 0's and 15's back
-        for i, x in zeros_and_fifteens:
+        # put the rests and sustains back
+        for i, x in rests_and_sustains:
             sorted_notes.insert(i, x)
 
         # copy the values back to g
@@ -118,7 +120,7 @@ class Measure(Genome):
         max_val = 1
         min_val = 14
         for idx in range(g.length):
-            if g[idx] == 0 or g[idx] == 15:
+            if g[idx] == REST or g[idx] == SUSTAIN:
                 continue
             if g[idx] < min_val:
                 min_val = g[idx]
@@ -133,7 +135,7 @@ class Measure(Genome):
     @staticmethod
     def _transpose(g, signed_steps):
         for idx in range(g.length):
-            if g[idx] == 0 or g[idx] == 15:
+            if g[idx] == REST or g[idx] == SUSTAIN:
                 continue
             tmp = g[idx] + signed_steps
             if tmp > 14:
@@ -149,7 +151,7 @@ class Measure(Genome):
         new_g = []
         for i in range(g.length//2, g.length):
             new_g.append(g[i])
-            new_g.append(15)
+            new_g.append(SUSTAIN)
 
         for idx in range(g.length):
             g[idx] = new_g[idx]
@@ -160,7 +162,7 @@ class Measure(Genome):
         new_g = []
         for i in range(g.length//2):
             new_g.append(g[i])
-            new_g.append(15)
+            new_g.append(SUSTAIN)
 
         for idx in range(g.length):
             g[idx] = new_g[idx]
@@ -454,7 +456,7 @@ def assign_fitness_penalize_jumps(phrase_pop, measures, metadata):
         for measure_idx in phrase:
             measure = measures.genomes[measure_idx]
             for note in measure:
-                if 0 < note < 15:
+                if REST < note < SUSTAIN:
                     if last_note:
                         jump_size = last_note - note
                         if jump_size > 2:
@@ -473,12 +475,12 @@ def assign_fitness_penalize_rests(phrase_pop, measures, metadata):
         for measure_idx in phrase:
             measure = measures.genomes[measure_idx]
             for note in measure:
-                if note == 0:
+                if note == REST:
                     rest_on = True
-                elif 0 < note < 15:
+                elif REST < note < SUSTAIN:
                     rest_on = False
 
-                if rest_on and note == 15:
+                if rest_on and note == SUSTAIN:
                     measure.fitness -= 6
                     phrase.fitness -= 2
 
@@ -664,21 +666,6 @@ def automatic_fitness(phrases, measures, metadata, ff):
                 phrase.fitness = scaled_fitness
                 # print("%i out of %i" % (iters, phrases.size * phrase_genomes[0].length))
 
-                # add penalty for empty bars
-                empty = True
-                for note in measure:
-                    if 0 < note < 15:
-                        empty = False
-                if empty:
-                    measure.fitness -= 100
-
-                # penalty for too many 16th notes
-                # for note in measure:
-                #     if last_note:
-                #         if (0 < note < 15) and (0 < last_note < 15):
-                #             measure.fitness -= 10
-                #     last_note = note
-
         total_population_fitness += cumulative_fitness
         total_population_length += cumulative_length
 
@@ -690,7 +677,7 @@ def main():
         print("waiting 10 seconds so you can attach a debugger...")
         time.sleep(10)
 
-    measure_pop_size = 1024
+    measure_pop_size = 32
     smallest_note = 16
     # one measure of each chord for 4 beats each
     chords = [MyChord('A3', 4, 'min7', [0, 3, 7, 10], [0, 2, 3, 4]),
@@ -712,8 +699,9 @@ def main():
     phrase_genome_len = int(phrase_genome_len)
 
     measures = MeasurePopulation(measure_pop_size)
+    measure_number_size = int(ceil(log(SUSTAIN + 1, 2)))
     for itr in range(measures.size):
-        m = Measure(length=metadata.notes_per_measure, number_size=4)
+        m = Measure(length=metadata.notes_per_measure, number_size=measure_number_size)
         m.initialize()
         measures.genomes.append(m)
 
