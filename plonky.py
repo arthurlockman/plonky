@@ -437,19 +437,21 @@ def assign_random_fitness(phrase_pop, measures, metadata):
 
 def assign_fitness_penalize_jumps(phrase_pop, measures, metadata):
     phrase_genomes = phrase_pop.genomes
-    last_note = None
     for pidx, phrase in enumerate(phrase_genomes):
+        last_note = None
         for measure_idx in phrase:
             measure = measures.genomes[measure_idx]
             for note in measure:
                 if 0 < note < 15:
-                    if not last_note:
-                        last_note = note
-                    else:
+                    if last_note:
                         jump_size = last_note - note
-                        if jump_size > 3:
-                            measure.fitness -= jump_size
-
+                        if jump_size > 2:
+                            measure.fitness -= 10 * (jump_size ** 2)
+                            phrase.fitness -= 10 * (jump_size ** 2)
+                        else:
+                            measure.fitness += 10
+                            phrase.fitness += 10
+                    last_note = note
 
 def assign_fitness_penalize_rests(phrase_pop, measures, metadata):
     phrase_genomes = phrase_pop.genomes
@@ -595,6 +597,8 @@ def automatic_fitness(phrases, measures, metadata, ff):
     total_population_fitness = 0
     total_population_length = 0
     iters = 0
+    ftime = 0
+    mtime = 0
     for phrase in phrase_genomes:
         measure_metadata = deepcopy(metadata)
 
@@ -606,7 +610,9 @@ def automatic_fitness(phrases, measures, metadata, ff):
         for measure_idx in phrase:
             iters += 1
             measure = measures.genomes[measure_idx]
+            t0 = time.time()
             measure_lead_part, _, _, beat_idx, chord_idx = measure_to_parts(measure, measure_metadata)
+            mtime += time.time() - t0
             stream_to_evaluate.append(measure_lead_part)
 
             measure_metadata.chords = measure_metadata.chords[chord_idx:]
@@ -619,7 +625,10 @@ def automatic_fitness(phrases, measures, metadata, ff):
             mf.open(tmp_midi_name, 'wb')
             mf.write()
             mf.close()
+            # cumulative_fitness, cumulative_length = ff.evaluate_fitness(tmp_midi_name)
+            t0 = time.time()
             cumulative_fitness, cumulative_length = ff.evaluate_fitness(tmp_midi_name)
+            ftime += time.time() - t0
 
             # TODO: this is a workaround for a bug and should be removed eventually
             if cumulative_fitness is None:
@@ -666,7 +675,7 @@ def automatic_fitness(phrases, measures, metadata, ff):
         total_population_fitness += cumulative_fitness
         total_population_length += cumulative_length
 
-    print('fitness:', total_population_fitness, ' length:', total_population_length)
+    print('fitness:', total_population_fitness, ' length:', total_population_length, 'ftime, mtime', ftime, mtime)
 
 
 def main():
@@ -674,17 +683,17 @@ def main():
         print("waiting 10 seconds so you can attach a debugger...")
         time.sleep(10)
 
-    measure_pop_size = 512
+    measure_pop_size = 1024
     smallest_note = 16
     # one measure of each chord for 4 beats each
     chords = [MyChord('A3', 4, 'min7', [0, 3, 7, 10], [0, 2, 3, 4]),
               MyChord('D3', 4, 'maj7', [7, 10, 14, 16], [12, 0, 2, 4]),
               MyChord('G3', 4, 'maj7', [0, 4, 7, 11], [0, 4, 7, 8]),
               MyChord('E3', 4, 'maj7', [4, 7, 10, 12], [12, 7, 12, 7]),
-              MyChord('A3', 4, 'min7', [0, 3, 7, 10], [0, 2, 3, 4]),
-              MyChord('D3', 4, 'maj7', [7, 10, 14, 16], [12, 0, 2, 4]),
-              MyChord('G3', 4, 'maj7', [0, 4, 7, 11], [0, 4, 7, 8]),
-              MyChord('E3', 4, 'maj7', [4, 7, 10, 12], [12, 7, 12, 7]),
+              MyChord('A3', 4, 'min7', [0, 3, 7, 10], [0, 4, 0, -5]),
+              MyChord('D3', 4, 'maj7', [7, 10, 14, 16], [4, 0, 2, 4]),
+              MyChord('G3', 4, 'maj7', [0, 4, 7, 11], [0, 4, 7, 7]),
+              MyChord('E3', 4, 'maj7', [4, 7, 10, 12], [12, 10, 7, 4]),
               ]
 
     metadata = Metadata('C', chords, '4/4', 140, smallest_note, 60)
@@ -701,7 +710,7 @@ def main():
         m.initialize()
         measures.genomes.append(m)
 
-    phrases = PhrasePopulation(64)
+    phrases = PhrasePopulation(measure_pop_size//measures_per_phrase)
     for itr in range(phrases.size):
         p = Phrase(length=measures_per_phrase, number_size=phrase_genome_len)
         p.initialize()
@@ -742,7 +751,7 @@ def main():
         ff = FitnessFunction()
         print("Using automatic fitness function")
 
-    num_generations = 100
+    num_generations = 15
     if '--generations' in sys.argv:
         _pos = sys.argv.index('--generations')
         num_generations = int(sys.argv[_pos + 1])
@@ -752,28 +761,27 @@ def main():
     t0 = last_time
     for itr in range(num_generations):
 
-        measures.save('in_progress_measures.np')
-        phrases.save('in_progress_phrases.np')
-
         if itr % 4 == 0:
             assign_fitness_penalize_jumps(phrases, measures, metadata)
-        # elif (itr + 1) % 4 == 0:
-        #     manual_fitness(phrases, measures, metadata, nbinput)
+        elif (itr + 1) % 4 == 0:
+            manual_fitness(phrases, measures, metadata, nbinput)
         else:
             # assign fitness
             if manual:
                 manual_fitness(phrases, measures, metadata, nbinput)
             else:
-                automatic_fitness(phrases, measures, metadata, ff)
+                # automatic_fitness(phrases, measures, metadata, ff)
+                assign_fitness_penalize_jumps(phrases, measures, metadata)
+
+        # save progress
+        measures.save('measures.np')
+        phrases.save('phrases.np')
 
         # do mutation on measures
         measures = mutate_and_cross(measures, Measure.mutate)
         phrases = mutate_and_cross(phrases, Phrase.mutate, measures, metadata, ff)
 
         # TODO: Initialize fitness of new measure to the mean of the not-new measures?
-
-        measures.save('measures.np')
-        phrases.save('phrases.np')
         t_now = time.time()
         print("Generation %i completed in %3.3f seconds." % (itr, t_now - last_time))
         last_time = t_now
