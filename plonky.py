@@ -144,6 +144,17 @@ class Measure(Genome):
                 g[idx] = tmp
 
     @staticmethod
+    def end_time_stretch(g):
+        # double the length of all notes, cutting off the first half of the measure
+        new_g = []
+        for i in range(g.length//2, g.length):
+            new_g.append(g[i])
+            new_g.append(15)
+
+        for idx in range(g.length):
+            g[idx] = new_g[idx]
+
+    @staticmethod
     def time_stretch(g):
         # double the length of all notes, cutting off the last half of the measure
         new_g = []
@@ -180,6 +191,7 @@ class Measure(Genome):
             Measure.sort_descending,
             Measure.transpose,
             Measure.time_stretch,
+            Measure.end_time_stretch,
         ]
 
         # do nothing to parents or baby1.
@@ -453,6 +465,7 @@ def assign_fitness_penalize_jumps(phrase_pop, measures, metadata):
                             phrase.fitness += 10
                     last_note = note
 
+
 def assign_fitness_penalize_rests(phrase_pop, measures, metadata):
     phrase_genomes = phrase_pop.genomes
     rest_on = None
@@ -597,8 +610,6 @@ def automatic_fitness(phrases, measures, metadata, ff):
     total_population_fitness = 0
     total_population_length = 0
     iters = 0
-    ftime = 0
-    mtime = 0
     for phrase in phrase_genomes:
         measure_metadata = deepcopy(metadata)
 
@@ -610,9 +621,7 @@ def automatic_fitness(phrases, measures, metadata, ff):
         for measure_idx in phrase:
             iters += 1
             measure = measures.genomes[measure_idx]
-            t0 = time.time()
             measure_lead_part, _, _, beat_idx, chord_idx = measure_to_parts(measure, measure_metadata)
-            mtime += time.time() - t0
             stream_to_evaluate.append(measure_lead_part)
 
             measure_metadata.chords = measure_metadata.chords[chord_idx:]
@@ -625,14 +634,12 @@ def automatic_fitness(phrases, measures, metadata, ff):
             mf.open(tmp_midi_name, 'wb')
             mf.write()
             mf.close()
-            # cumulative_fitness, cumulative_length = ff.evaluate_fitness(tmp_midi_name)
-            t0 = time.time()
             cumulative_fitness, cumulative_length = ff.evaluate_fitness(tmp_midi_name)
-            ftime += time.time() - t0
 
             # TODO: this is a workaround for a bug and should be removed eventually
             if cumulative_fitness is None:
-                sys.exit("No Fitness Returned")
+                print("No Fitness Returned")
+                continue
             else:
                 cumulative_fitness = int(cumulative_fitness)
 
@@ -675,7 +682,7 @@ def automatic_fitness(phrases, measures, metadata, ff):
         total_population_fitness += cumulative_fitness
         total_population_length += cumulative_length
 
-    print('fitness:', total_population_fitness, ' length:', total_population_length, 'ftime, mtime', ftime, mtime)
+    print('fitness:', total_population_fitness, ' length:', total_population_length)
 
 
 def main():
@@ -770,8 +777,8 @@ def main():
             if manual:
                 manual_fitness(phrases, measures, metadata, nbinput)
             else:
-                # automatic_fitness(phrases, measures, metadata, ff)
-                assign_fitness_penalize_jumps(phrases, measures, metadata)
+                automatic_fitness(phrases, measures, metadata, ff)
+                # assign_fitness_penalize_jumps(phrases, measures, metadata)
 
         # save progress
         measures.save('measures.np')
