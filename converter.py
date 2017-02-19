@@ -2,8 +2,11 @@ from __future__ import print_function, division
 
 import music21
 from copy import deepcopy
+
 SUSTAIN = 127
-REST = 1
+
+# TRANSPOSE ASSUMES REST is 0
+REST = 0
 
 
 class MyChord:

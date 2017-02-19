@@ -115,10 +115,10 @@ class Measure(Genome):
 
     @staticmethod
     def transpose(g):
-        signed_steps = np.random.randint(1, 8)
+        signed_steps = np.random.randint(1, 20)
 
-        max_val = 1
-        min_val = 14
+        max_val = REST + 1
+        min_val = SUSTAIN - 1
         for idx in range(g.length):
             if g[idx] == REST or g[idx] == SUSTAIN:
                 continue
@@ -127,7 +127,7 @@ class Measure(Genome):
             if g[idx] > max_val:
                 max_val = g[idx]
 
-        if (14 - max_val) < (min_val - 1):
+        if ((SUSTAIN - 1) - max_val) < (min_val - (REST + 1)):
             signed_steps = -signed_steps
 
         Measure._transpose(g, signed_steps)
@@ -138,8 +138,8 @@ class Measure(Genome):
             if g[idx] == REST or g[idx] == SUSTAIN:
                 continue
             tmp = g[idx] + signed_steps
-            if tmp > 14:
-                g[idx] = 14 - (tmp - 14)
+            if tmp > SUSTAIN - 1:
+                g[idx] = (SUSTAIN - 1) - (tmp - (SUSTAIN - 1))
             elif tmp < 1:
                 g[idx] = 1 + (1 - tmp)
             else:
@@ -677,7 +677,7 @@ def main():
         print("waiting 10 seconds so you can attach a debugger...")
         time.sleep(10)
 
-    measure_pop_size = 32
+    measure_pop_size = 128
     smallest_note = 16
     # one measure of each chord for 4 beats each
     chords = [MyChord('A3', 4, 'min7', [0, 3, 7, 10], [0, 2, 3, 4]),
