@@ -10,7 +10,7 @@ import fitness
 ff = fitness.FitnessFunction()
 
 # random versus good jazz solos
-if 0:
+if 1:
     N = 20
     random_fitness = []
     def random_midi(ff):
@@ -109,7 +109,6 @@ if 0:
     plt.title("Major Triad Arpeggios")
     plt.xlabel("Arpeggio Length")
 
-
 if 0:
     random_fitness = []
     lengths = []
@@ -167,9 +166,8 @@ if 0:
     plt.ylabel('fitness')
     plt.xlabel('length, 1 == whole, 16=16ths')
 
-
 # arpeggio tonic
-if 1:
+if 0:
     tonic = 60
 
     # C major triad arpeggio

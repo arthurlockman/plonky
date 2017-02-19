@@ -724,7 +724,7 @@ def main():
     if '--play' in sys.argv:
         print("playing generation")
         metadata.backing_velocity = 8
-        phrases.play(measures, metadata)
+        phrases.play(measures, metadata, best_n_phrases=16)
         return
     elif '--render' in sys.argv:
         print("rendering generation")
