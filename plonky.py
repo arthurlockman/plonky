@@ -181,6 +181,12 @@ class Measure(Genome):
         g[gene_idx] = a.uint
 
     @staticmethod
+    def fill(g):
+        for idx, note in enumerate(g):
+            if note == 15:
+                g[idx] = np.random.randint(0, 15)
+
+    @staticmethod
     def mutate(parent1, parent2, baby1, baby2, population):
         mutations = [
             Measure.bit_flip,
@@ -192,6 +198,7 @@ class Measure(Genome):
             Measure.transpose,
             Measure.time_stretch,
             Measure.end_time_stretch,
+            Measure.fill,
         ]
 
         # do nothing to parents or baby1.
@@ -477,6 +484,12 @@ def manual_fitness(phrases, measures, metadata, nbinput):
         beat_idx = max(0, beat_idx - feedback_offset)
 
         phrase_idx = beat_idx // beats_per_phrase
+
+        # we might reach the end of the phrase in this callback
+        # so just stop if we do
+        if phrase_idx >= len(phrase_genomes):
+            return
+
         current_phrase = phrase_genomes[phrase_idx]
         measure_idx = (beat_idx % beats_per_phrase) // beats_per_measure
         current_measure = measures.genomes[current_phrase[measure_idx]]
