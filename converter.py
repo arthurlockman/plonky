@@ -44,10 +44,40 @@ class Metadata:
         self.tempo = tempo
         self.ms_per_beat = (60 * 1000 / tempo)
         self.backing_velocity = backing_velocity
+        self.backing_stream = None
 
     def __str__(self):
         return '_'.join([str(self.key), str(self.time_signature.ratioString.replace('/', '-')),
                         str(self.resolution), str(self.tempo) + 'bpm'])
+
+
+def create_stream(phrases, measures, metadata):
+    population_lead_part = music21.stream.Part()
+    population_lead_part.append(music21.instrument.Trumpet())
+    for phrase in phrases:
+        lead_part = phrase_to_parts(phrase, measures, metadata)
+        population_lead_part.append(lead_part)
+
+    if metadata.backing_stream:
+        num_repeats = population_lead_part.quarterLength // metadata.backing_stream.quarterLength
+        assert(num_repeats.is_integer())
+        num_repeats = int(num_repeats)
+
+        stream = metadata.backing_stream
+        stream.insert(0, deepcopy(metadata.backing_stream))
+        for i in range(num_repeats):
+            # add the backing track over and over
+            offset = stream.quarterLength
+            stream.insert(offset, deepcopy(metadata.backing_stream))
+
+    else:
+        stream = music21.stream.Stream()
+
+    # put Metronome and lead at the beginning
+    stream.insert(0, music21.tempo.MetronomeMark(number=metadata.tempo))
+    stream.insert(0, population_lead_part.flat)
+
+    return stream
 
 
 def phrase_to_parts(phrase, measure_population, metadata):
@@ -105,3 +135,9 @@ def measure_to_parts(measure, metadata):
             chord_idx += 1
 
     return lead_part, idx * metadata.resolution, chord_idx
+
+
+def set_stream_velocity(stream, velocity):
+    for note in stream.recurse():
+        if isinstance(note, music21.note.Note):
+            note.volume.velocity = velocity

@@ -10,7 +10,7 @@ import music21
 import numpy as np
 from bitstring import BitStream, BitArray
 
-from converter import Metadata, phrase_to_parts, MyChord, measure_to_parts
+from converter import Metadata, set_stream_velocity, MyChord, measure_to_parts, create_stream
 from fitness import FitnessFunction
 from ga import Genome, Population, mutate_and_cross, uint_to_bit_str
 from non_blocking_input import NonBlockingInput
@@ -389,14 +389,7 @@ class PhrasePopulation(Population):
         return selected
 
     def render_midi(self, measures, metadata, filename):
-        population_lead_part = music21.stream.Part()
-        population_lead_part.append(music21.instrument.Trumpet())
-        for phrase in self.genomes:
-            lead_part = phrase_to_parts(phrase, measures, metadata)
-            population_lead_part.append(lead_part)
-        population_stream = music21.stream.Stream()
-        population_stream.append(music21.tempo.MetronomeMark(number=metadata.tempo))
-        population_stream.append(population_lead_part.flat)
+        population_stream = create_stream(self.genomes, measures, metadata)
         midi_file = music21.midi.translate.streamToMidiFile(population_stream)
         midi_file.open(filename, 'wb')
         midi_file.write()
@@ -410,15 +403,7 @@ class PhrasePopulation(Population):
         else:
             genomes = self.genomes
 
-        population_lead_part = music21.stream.Part()
-        population_lead_part.append(music21.instrument.Trumpet())
-        for phrase in genomes:
-            lead_part = phrase_to_parts(phrase, measures, metadata)
-            population_lead_part.append(lead_part)
-        population_stream = music21.stream.Stream()
-        population_stream.append(music21.tempo.MetronomeMark(number=metadata.tempo))
-        population_stream.append(population_lead_part.flat)
-
+        population_stream = create_stream(genomes, measures, metadata)
         sp = music21.midi.realtime.StreamPlayer(population_stream)
         sp.play()
 
@@ -467,19 +452,12 @@ def assign_fitness_penalize_rests(phrase_pop, measures, metadata):
                     phrase.fitness -= 2
 
 
-def manual_fitness(phrase_pop, measures, metadata, nbinput):
+def manual_fitness(phrases, measures, metadata, nbinput):
     # setup logging
-    log = {'phrases': {},
-           'measures': {}}
+    feedback_log = {'phrases': {}, 'measures': {}}
 
-    phrase_genomes = phrase_pop.genomes
+    phrase_genomes = phrases.genomes
     feedback_offset = 2  # in beats
-    population_lead_part = music21.stream.Part()
-    population_lead_part.append(music21.instrument.Trumpet())
-
-    for idx, phrase in enumerate(phrase_genomes):
-        lead_part = phrase_to_parts(phrase, measures, metadata)
-        population_lead_part.append(lead_part)
 
     d = {'raw_count': 0, 'measure_feedback': [], 'phrase_feedback': []}
 
@@ -516,7 +494,7 @@ def manual_fitness(phrase_pop, measures, metadata, nbinput):
         elif i == 's':
             t = time.time()
             filename_p = 'phrases_' + str(metadata) + "_" + str(int(t)) + '.np'
-            phrase_pop.save(filename_p)
+            phrases.save(filename_p)
             filename_m = 'measures_' + str(metadata) + "_" + str(int(t)) + '.np'
             measures.save(filename_m)
             print("saved " + filename_m + " and " + filename_p)
@@ -550,31 +528,30 @@ def manual_fitness(phrase_pop, measures, metadata, nbinput):
             feedback = False
 
         if feedback:
-            if measure_hash not in log['measures']:
-                log['measures'][measure_hash] = []
-            log['measures'][measure_hash].append(d['measure_feedback'])
+            if measure_hash not in feedback_log['measures']:
+                feedback_log['measures'][measure_hash] = []
+            feedback_log['measures'][measure_hash].append(d['measure_feedback'])
 
-            if phrase_hash not in log['phrases']:
-                log['phrases'][phrase_hash] = []
-            log['phrases'][phrase_hash].append(d['phrase_feedback'])
+            if phrase_hash not in feedback_log['phrases']:
+                feedback_log['phrases'][phrase_hash] = []
+            feedback_log['phrases'][phrase_hash].append(d['phrase_feedback'])
 
     prescalar = 8
     wait_ms = metadata.ms_per_beat / prescalar
-    population_stream = music21.stream.Stream()
-    population_stream.append(music21.tempo.MetronomeMark(number=metadata.tempo))
-    population_stream.append(population_lead_part.flat)
+
+    population_stream = create_stream(phrase_genomes, measures, metadata)
     sp = music21.midi.realtime.StreamPlayer(population_stream)
     sp.play(busyFunction=get_feedback, busyArgs=[False, prescalar], busyWaitMilliseconds=wait_ms)
     # send_stream_to_virtual_midi(metadata.midi_out, phrase_stream, metadata)
 
     with open('saves/phrase_feedback.csv', 'wb') as csv_file:
         writer = csv.writer(csv_file)
-        for key, value in log['phrases'].items():
+        for key, value in feedback_log['phrases'].items():
             writer.writerow([key, value])
 
     with open('saves/measure_feedback.csv', 'wb') as csv_file:
         writer = csv.writer(csv_file)
-        for key, value in log['measures'].items():
+        for key, value in feedback_log['measures'].items():
             writer.writerow([key, value])
 
 
@@ -667,7 +644,7 @@ def main():
         time.sleep(10)
 
     measure_pop_size = 32
-    smallest_note = 16
+    smallest_note = 1
     # one measure of each chord for 4 beats each
     chords = [MyChord('A3', 4, 'min7'),
               MyChord('D3', 4, 'maj7'),
@@ -691,6 +668,8 @@ def main():
     for itr in range(measures.size):
         m = Measure(length=metadata.notes_per_measure, number_size=4)
         m.initialize()
+        for i in range(m.length):
+            m[i] = 1
         measures.genomes.append(m)
 
     phrases = PhrasePopulation(measure_pop_size//measures_per_phrase)
@@ -704,9 +683,19 @@ def main():
         measures.load('measures.np')
         phrases.load('phrases.np')
 
+    if '--backing' in sys.argv:
+        _backing_filename_idx = sys.argv.index('--backing') + 1
+        backing_filename = sys.argv[_backing_filename_idx]
+        if not os.path.exists(backing_filename):
+            sys.exit(backing_filename + " not found.")
+        metadata.backing_stream = music21.converter.parse(backing_filename)
+        set_stream_velocity(metadata.backing_stream, metadata.backing_velocity)
+    else:
+        metadata.backing_stream = None
+
     if '--play' in sys.argv:
         print("playing generation")
-        metadata.backing_velocity = 8
+        metadata.backing_velocity = 10
         phrases.play(measures, metadata, best_n_phrases=16)
         return
     elif '--render' in sys.argv:
@@ -727,7 +716,7 @@ def main():
         ff = None
         print("Using manual fitness function")
         nbinput = NonBlockingInput()
-        metadata.backing_velocity = 8
+        metadata.backing_velocity = 6
     else:
         manual = False
         nbinput = None
