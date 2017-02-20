@@ -59,17 +59,9 @@ def create_stream(phrases, measures, metadata):
         population_lead_part.append(lead_part)
 
     if metadata.backing_stream:
-        num_repeats = population_lead_part.quarterLength // metadata.backing_stream.quarterLength
-        assert(num_repeats.is_integer())
-        num_repeats = int(num_repeats)
-
-        stream = metadata.backing_stream
-        stream.insert(0, deepcopy(metadata.backing_stream))
-        for i in range(num_repeats):
-            # add the backing track over and over
-            offset = stream.quarterLength
-            stream.insert(offset, deepcopy(metadata.backing_stream))
-
+        # TODO: somehow copy/extend the stream the correct number of times
+        # so the backing track doesn't have to be hardcoded length
+        stream = deepcopy(metadata.backing_stream)
     else:
         stream = music21.stream.Stream()
 
@@ -139,5 +131,5 @@ def measure_to_parts(measure, metadata):
 
 def set_stream_velocity(stream, velocity):
     for note in stream.recurse():
-        if isinstance(note, music21.note.Note):
+        if isinstance(note, music21.note.Note) or isinstance(note, music21.chord.Chord):
             note.volume.velocity = velocity

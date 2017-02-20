@@ -475,6 +475,7 @@ def manual_fitness(phrases, measures, metadata, nbinput):
         beat_idx = max(0, beat_idx - feedback_offset)
 
         phrase_idx = beat_idx // beats_per_phrase
+        print(phrase_idx)
         current_phrase = phrase_genomes[phrase_idx]
         measure_idx = (beat_idx % beats_per_phrase) // beats_per_measure
         current_measure = measures.genomes[current_phrase[measure_idx]]
@@ -644,7 +645,7 @@ def main():
         time.sleep(10)
 
     measure_pop_size = 32
-    smallest_note = 1
+    smallest_note = 8
     # one measure of each chord for 4 beats each
     chords = [MyChord('A3', 4, 'min7'),
               MyChord('D3', 4, 'maj7'),
@@ -656,7 +657,7 @@ def main():
               MyChord('E3', 4, 'maj7'),
               ]
 
-    metadata = Metadata('C', chords, '4/4', 140, smallest_note, 60)
+    metadata = Metadata('C', chords, '4/4', 180, smallest_note, 60)
     measures_per_phrase = 8
 
     phrase_genome_len = log(measure_pop_size, 2)
@@ -668,8 +669,6 @@ def main():
     for itr in range(measures.size):
         m = Measure(length=metadata.notes_per_measure, number_size=4)
         m.initialize()
-        for i in range(m.length):
-            m[i] = 1
         measures.genomes.append(m)
 
     phrases = PhrasePopulation(measure_pop_size//measures_per_phrase)
@@ -683,19 +682,9 @@ def main():
         measures.load('measures.np')
         phrases.load('phrases.np')
 
-    if '--backing' in sys.argv:
-        _backing_filename_idx = sys.argv.index('--backing') + 1
-        backing_filename = sys.argv[_backing_filename_idx]
-        if not os.path.exists(backing_filename):
-            sys.exit(backing_filename + " not found.")
-        metadata.backing_stream = music21.converter.parse(backing_filename)
-        set_stream_velocity(metadata.backing_stream, metadata.backing_velocity)
-    else:
-        metadata.backing_stream = None
-
     if '--play' in sys.argv:
         print("playing generation")
-        metadata.backing_velocity = 10
+        metadata.backing_velocity = 8
         phrases.play(measures, metadata, best_n_phrases=16)
         return
     elif '--render' in sys.argv:
@@ -716,12 +705,23 @@ def main():
         ff = None
         print("Using manual fitness function")
         nbinput = NonBlockingInput()
-        metadata.backing_velocity = 6
+        metadata.backing_velocity = 2
     else:
         manual = False
         nbinput = None
         ff = FitnessFunction()
         print("Using automatic fitness function")
+
+    if '--backing' in sys.argv:
+        _backing_filename_idx = sys.argv.index('--backing') + 1
+        backing_filename = sys.argv[_backing_filename_idx]
+        if not os.path.exists(backing_filename):
+            sys.exit(backing_filename + " not found.")
+        metadata.backing_stream = music21.converter.parse(backing_filename)
+        set_stream_velocity(metadata.backing_stream, metadata.backing_velocity)
+    else:
+        metadata.backing_stream = None
+
 
     num_generations = 15
     if '--generations' in sys.argv:
