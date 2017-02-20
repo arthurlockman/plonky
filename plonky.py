@@ -182,9 +182,18 @@ class Measure(Genome):
 
     @staticmethod
     def fill(g):
+        last_note = None
         for idx, note in enumerate(g):
+            if 0 < note < 15:
+                last_note = note
             if note == 15:
-                g[idx] = np.random.randint(0, 15)
+                if last_note:
+                    if np.random.rand() < 0.5:
+                        g[idx] = last_note + 1
+                    else:
+                        g[idx] = last_note - 1
+                else:
+                    g[idx] = np.random.randint(0, 15)
 
     @staticmethod
     def mutate(parent1, parent2, baby1, baby2, population):
@@ -436,11 +445,11 @@ def assign_fitness_penalize_jumps(phrase_pop, measures, metadata):
                     if last_note:
                         jump_size = last_note - note
                         if jump_size > 2:
-                            measure.fitness -= 10 * (jump_size ** 2)
-                            phrase.fitness -= 10 * (jump_size ** 2)
+                            measure.fitness -= 1
+                            phrase.fitness -= 1
                         else:
-                            measure.fitness += 10
-                            phrase.fitness += 10
+                            measure.fitness += 1
+                            phrase.fitness += 1
                     last_note = note
 
 
@@ -466,7 +475,7 @@ def manual_fitness(phrases, measures, metadata, nbinput):
     feedback_log = {'phrases': {}, 'measures': {}}
 
     phrase_genomes = phrases.genomes
-    feedback_offset = 1  # in beats
+    feedback_offset = 3  # in beats
 
     d = {'raw_count': 0, 'measure_feedback': [], 'phrase_feedback': []}
 
@@ -671,7 +680,7 @@ def main():
               MyChord('E3', 4, 'maj7'),
               ]
 
-    metadata = Metadata('C', chords, '4/4', 180, smallest_note, 60)
+    metadata = Metadata('C', chords, '4/4', 140, smallest_note, 60)
     measures_per_phrase = 8
 
     phrase_genome_len = log(measure_pop_size, 2)
@@ -685,7 +694,7 @@ def main():
         m.initialize()
         measures.genomes.append(m)
 
-    phrases = PhrasePopulation(measure_pop_size//measures_per_phrase)
+    phrases = PhrasePopulation(24)
     for itr in range(phrases.size):
         p = Phrase(length=measures_per_phrase, number_size=phrase_genome_len)
         p.initialize()
