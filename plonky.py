@@ -196,8 +196,9 @@ class Measure(Genome):
 
         # do nothing to parents or baby1.
         # mutate baby2 in one of various ways
-        mutation_func = np.random.choice(mutations, 1)[0]
-        mutation_func(baby2)
+        if np.random.rand() < 0.5:
+            mutation_func = np.random.choice(mutations, 1)[0]
+            mutation_func(baby2)
 
 
 class Phrase(Genome):
@@ -327,9 +328,10 @@ class Phrase(Genome):
 
         # do nothing to parents or baby1.
         # mutate baby2 in one of various ways
-        mutation_func = np.random.choice(mutations, 1)[0]
-        measure_population = args[0]
-        mutation_func(baby2, population, measure_population)
+        if np.random.rand() < 0.5:
+            mutation_func = np.random.choice(mutations, 1)[0]
+            measure_population = args[0]
+            mutation_func(baby2, population, measure_population)
 
 
 class MeasurePopulation(Population):
@@ -457,7 +459,7 @@ def manual_fitness(phrases, measures, metadata, nbinput):
     feedback_log = {'phrases': {}, 'measures': {}}
 
     phrase_genomes = phrases.genomes
-    feedback_offset = 2  # in beats
+    feedback_offset = 1  # in beats
 
     d = {'raw_count': 0, 'measure_feedback': [], 'phrase_feedback': []}
 
@@ -475,7 +477,6 @@ def manual_fitness(phrases, measures, metadata, nbinput):
         beat_idx = max(0, beat_idx - feedback_offset)
 
         phrase_idx = beat_idx // beats_per_phrase
-        print(phrase_idx)
         current_phrase = phrase_genomes[phrase_idx]
         measure_idx = (beat_idx % beats_per_phrase) // beats_per_measure
         current_measure = measures.genomes[current_phrase[measure_idx]]
