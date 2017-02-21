@@ -33,7 +33,10 @@ class Measure(Genome):
             else:
                 # new note
                 if last_note:
-                    new_note_pitch = last_note + np.random.randint(-4, 5)
+                    while True:
+                        new_note_pitch = last_note + np.random.randint(-4, 5)
+                        if 0 < new_note_pitch < 15:
+                            break
                 else:
                     new_note_pitch = np.random.randint(1, 15)
                 last_note = new_note_pitch
@@ -482,6 +485,7 @@ def assign_fitness_reward_notes(phrase_pop, measures, metadata):
                 if 0 < note < 15:
                     measure.fitness += 1
                     phrase.fitness += 1
+
 
 def assign_random_fitness(phrase_pop, measures, metadata):
     phrase_genomes = phrase_pop.genomes
