@@ -332,8 +332,24 @@ class Phrase(Genome):
             g[i] = new_g[i]
 
     @staticmethod
+    def bit_flip(g):
+        bit_idx = np.random.randint(0, g.number_size * g.length)
+        Phrase._bit_flip(g, bit_idx)
+
+    @staticmethod
+    def _bit_flip(g, bit_idx):
+        gene_idx = bit_idx // g.number_size
+        gene_bit_idx = bit_idx % g.number_size
+        gene = g[gene_idx]
+        a = BitArray(uint=gene, length=g.number_size)
+        a._invert(gene_bit_idx)
+
+        g[gene_idx] = a.uint
+
+    @staticmethod
     def mutate(parent1, parent2, baby1, baby2, population, *args):
         mutations = [
+            Phrase.bit_flip,
             Phrase.reverse,
             Phrase.rotate,
             Phrase.genetic_repair,
