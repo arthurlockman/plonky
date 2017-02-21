@@ -53,7 +53,7 @@ class Metadata:
 
 def create_stream(phrases, measures, metadata):
     population_lead_part = music21.stream.Part()
-    population_lead_part.append(music21.instrument.SopranoSaxophone())
+    population_lead_part.append(music21.instrument.Trumpet())
     for phrase in phrases:
         lead_part = phrase_to_parts(phrase, measures, metadata)
         population_lead_part.append(lead_part)
