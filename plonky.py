@@ -448,8 +448,14 @@ class PhrasePopulation(Population):
 
         return selected
 
-    def render_midi(self, measures, metadata, filename):
-        population_stream = create_stream(self.genomes, measures, metadata)
+    def render_midi(self, measures, metadata, filename, best_n_phrases=None):
+        if best_n_phrases:
+            # sort and pick the best n phrases
+            genomes = sorted(self.genomes, key=lambda p: p.fitness)[:best_n_phrases]
+        else:
+            genomes = self.genomes
+
+        population_stream = create_stream(genomes, measures, metadata)
         midi_file = music21.midi.translate.streamToMidiFile(population_stream)
         midi_file.open(filename, 'wb')
         midi_file.write()
@@ -771,8 +777,8 @@ def main():
 
     if '--resume' in sys.argv:
         print("Loading measure & phrase populations from files")
-        measures.load('measures_99.np')
-        phrases.load('phrases_99.np')
+        measures.load('measures_19.np')
+        phrases.load('phrases_19.np')
     if '--manual' in sys.argv:
         manual = True
         ff = None
@@ -804,13 +810,13 @@ def main():
         print("rendering generation")
         if os.path.exists('output.mid'):
             if raw_input("overwrite output.mid? [y/n]") == 'y':
-                phrases.render_midi(measures, metadata, 'output.mid')
+                phrases.render_midi(measures, metadata, 'output.mid', best_n_phrases=16)
                 return
             else:
                 print("Ignoring.")
                 return
         else:
-            phrases.render_midi(measures, metadata, 'output.mid')
+            phrases.render_midi(measures, metadata, 'output.mid', best_n_phrases=16)
             return
 
     num_generations = 15
