@@ -771,8 +771,8 @@ def main():
 
     if '--resume' in sys.argv:
         print("Loading measure & phrase populations from files")
-        measures.load('measures_5.np')
-        # phrases.load('phrases_5.np')
+        measures.load('measures.np')
+        phrases.load('phrases.np')
     if '--manual' in sys.argv:
         manual = True
         ff = None
@@ -831,10 +831,15 @@ def main():
             f = automatic_fitness(phrases, measures, metadata, ff)
             # assign_fitness_penalize_jumps(phrases, measures, metadata)
             # assign_fitness_reward_notes(phrases, measures, metadata)
+            if f > max_f:
+                max_f = f
+                print('next best gen is ', itr)
+
+
 
         # save progress
-        measures.save('measures_%i.np' % (itr+5))
-        phrases.save('phrases_%i.np' % (itr+6))
+        measures.save('measures_%i.np' % itr)
+        phrases.save('phrases_%i.np' % itr)
 
         # do mutation on measures
         measures = mutate_and_cross(measures, Measure.mutate)
