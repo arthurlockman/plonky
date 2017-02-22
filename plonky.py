@@ -771,8 +771,8 @@ def main():
 
     if '--resume' in sys.argv:
         print("Loading measure & phrase populations from files")
-        measures.load('best_measures.np')
-        phrases.load('best_phrases.np')
+        measures.load('measures_5.np')
+        # phrases.load('phrases_5.np')
     if '--manual' in sys.argv:
         manual = True
         ff = None
@@ -833,8 +833,8 @@ def main():
             # assign_fitness_reward_notes(phrases, measures, metadata)
 
         # save progress
-        measures.save('measures_%i.np' % itr)
-        phrases.save('phrases_%i.np' % itr)
+        measures.save('measures_%i.np' % (itr+5))
+        phrases.save('phrases_%i.np' % (itr+6))
 
         # do mutation on measures
         measures = mutate_and_cross(measures, Measure.mutate)
