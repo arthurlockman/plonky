@@ -163,14 +163,14 @@ class FitnessFunction:
             ignore_polyphonic_notes=True)
         l = len(extracted_melodies)
         if l == 0:
-            sys.exit("No melodies found")
+            print("No melodies found")
         elif l > 1:
             sys.exit("too many melodies found")
 
         if extracted_melodies and extracted_melodies[0]:
             melody = extracted_melodies[0]
         else:
-            return None
+            return None, None
         return self.generator._model.melody_log_likelihood(melody), len(extracted_melodies[0])
 
 def main(unused_argv):

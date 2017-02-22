@@ -628,7 +628,6 @@ def manual_fitness(phrases, measures, metadata, nbinput):
     population_stream = create_stream(phrase_genomes, measures, metadata)
     sp = music21.midi.realtime.StreamPlayer(population_stream)
     sp.play(busyFunction=get_feedback, busyArgs=[False, prescalar], busyWaitMilliseconds=wait_ms)
-    # send_stream_to_virtual_midi(metadata.midi_out, phrase_stream, metadata)
 
     with open('saves/phrase_feedback.csv', 'wb') as csv_file:
         writer = csv.writer(csv_file)
@@ -730,21 +729,28 @@ def main():
         print("waiting 10 seconds so you can attach a debugger...")
         time.sleep(10)
 
-    measure_pop_size = 64
+    measure_pop_size = 32
     smallest_note = 8
     # one measure of each chord for 4 beats each
-    chords = [MyChord('A3', 4, 'min7'),
-              MyChord('D3', 4, 'maj7'),
-              MyChord('G3', 4, 'maj7'),
-              MyChord('E3', 4, 'maj7'),
+    chords = [MyChord('C3', 8, 'maj7'),
+              MyChord('F3', 4, 'min7'),
+              MyChord('B-3', 4, 'maj7'),
+              MyChord('C3', 8, 'maj7'),
+              MyChord('B-3', 4, 'min7'),
+              MyChord('E-3', 4, 'maj7'),
+              MyChord('A-3', 8, 'maj7'),
               MyChord('A3', 4, 'min7'),
               MyChord('D3', 4, 'maj7'),
+              MyChord('D3', 4, 'min7'),
               MyChord('G3', 4, 'maj7'),
-              MyChord('E3', 4, 'maj7'),
+              MyChord('C3', 4, 'maj7'),
+              MyChord('E-3', 4, 'maj7'),
+              MyChord('A-3', 4, 'maj7'),
+              MyChord('D-3', 4, 'maj7'),
               ]
 
     metadata = Metadata('C', chords, '4/4', 140, smallest_note, 60)
-    measures_per_phrase = 8
+    measures_per_phrase = 16
 
     phrase_genome_len = log(measure_pop_size, 2)
     if not phrase_genome_len.is_integer():
@@ -757,7 +763,7 @@ def main():
         m.initialize()
         measures.genomes.append(m)
 
-    phrases = PhrasePopulation(48)
+    phrases = PhrasePopulation(24)
     for itr in range(phrases.size):
         p = Phrase(length=measures_per_phrase, number_size=phrase_genome_len)
         p.initialize()
@@ -765,14 +771,14 @@ def main():
 
     if '--resume' in sys.argv:
         print("Loading measure & phrase populations from files")
-        measures.load('measures.np')
-        phrases.load('phrases.np')
+        measures.load('best_measures.np')
+        phrases.load('best_phrases.np')
     if '--manual' in sys.argv:
         manual = True
         ff = None
         print("Using manual fitness function")
         nbinput = NonBlockingInput()
-        metadata.backing_velocity = 2
+        metadata.backing_velocity = 4
     else:
         manual = False
         nbinput = None
@@ -788,6 +794,7 @@ def main():
         set_stream_velocity(metadata.backing_stream, metadata.backing_velocity)
     else:
         metadata.backing_stream = None
+
     if '--play' in sys.argv:
         print("playing generation")
         metadata.backing_velocity = 8
@@ -806,8 +813,6 @@ def main():
             phrases.render_midi(measures, metadata, 'output.mid')
             return
 
-
-
     num_generations = 15
     if '--generations' in sys.argv:
         _pos = sys.argv.index('--generations')
@@ -816,24 +821,20 @@ def main():
     print("Running " + str(num_generations) + " generations.")
     last_time = time.time()
     t0 = last_time
+    max_f = -sys.maxsize
     for itr in range(num_generations):
 
-        if itr % 4 == 0:
-            assign_fitness_penalize_jumps(phrases, measures, metadata)
-        # elif (itr + 1) % 4 == 0:
-        #     manual_fitness(phrases, measures, metadata, nbinput)
+        # assign fitness
+        if manual:
+            manual_fitness(phrases, measures, metadata, nbinput)
         else:
-            # assign fitness
-            if manual:
-                manual_fitness(phrases, measures, metadata, nbinput)
-            else:
-                # f = automatic_fitness(phrases, measures, metadata, ff)
-                assign_fitness_penalize_jumps(phrases, measures, metadata)
-                assign_fitness_reward_notes(phrases, measures, metadata)
+            f = automatic_fitness(phrases, measures, metadata, ff)
+            # assign_fitness_penalize_jumps(phrases, measures, metadata)
+            # assign_fitness_reward_notes(phrases, measures, metadata)
 
         # save progress
-        measures.save('measures.np')
-        phrases.save('phrases.np')
+        measures.save('measures_%i.np' % itr)
+        phrases.save('phrases_%i.np' % itr)
 
         # do mutation on measures
         measures = mutate_and_cross(measures, Measure.mutate)
