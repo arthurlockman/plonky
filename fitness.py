@@ -19,7 +19,7 @@ tf.app.flags.DEFINE_string(
     'checkpoint_file', None,
     'Path to the checkpoint file. run_dir will take priority over this flag.')
 tf.app.flags.DEFINE_string(
-    'bundle_file', '/home/peter/Projects/magenta/bundles/lookback_rnn.mag',
+    'bundle_file', None,
     'Path to the bundle file. If specified, this will take priority over '
     'run_dir and checkpoint_file, unless save_generator_bundle is True, in '
     'which case both this flag and either run_dir or checkpoint_file are '
@@ -83,9 +83,9 @@ tf.app.flags.DEFINE_string(
 # tf.app.flags.DEFINE_string(
 #     'hparams', "{'batch_size':64,'rnn_layer_sizes':[64,64]}",
 #     'something')
-setattr(FLAGS, 'config', 'lookback_rnn')
+setattr(FLAGS, 'config', 'attention_rnn')
 setattr(FLAGS, 'hparams', "{'batch_size':64,'rnn_layer_sizes':[64,64]}")
-# setattr(FLAGS, 'run_dir', 'logdir/20000')
+setattr(FLAGS, 'run_dir', 'logdir/jazzomat')
 
 
 def get_checkpoint():
