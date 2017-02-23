@@ -83,11 +83,12 @@ tf.app.flags.DEFINE_string(
 # tf.app.flags.DEFINE_string(
 #     'hparams', "{'batch_size':64,'rnn_layer_sizes':[64,64]}",
 #     'something')
-setattr(FLAGS, 'config', 'lookback_rnn')
+#setattr(FLAGS, 'config', 'lookback_rnn')
+setattr(FLAGS, 'config', 'attention_rnn')
 setattr(FLAGS, 'hparams', "{'batch_size':64,'rnn_layer_sizes':[64,64]}")
 #setattr(FLAGS, 'run_dir', 'logdir/20000')
 setattr(FLAGS, 'run_dir', 'logdir/30000')
-#setattr(FLAGS, 'run_dir', 'logdir/jazzomat')
+# setattr(FLAGS, 'run_dir', 'logdir/jazzomat')
 #setattr(FLAGS, 'bundle_file', '/home/peter/Projects/magenta/bundles/lookback_rnn.mag')
 
 
