@@ -735,8 +735,8 @@ def main():
         print("waiting 10 seconds so you can attach a debugger...")
         time.sleep(10)
 
-    measure_pop_size = 64
-    smallest_note = 16
+    measure_pop_size = 128
+    smallest_note = 8
     # one measure of each chord for 4 beats each
     chords = [MyChord('C3', 8, 'maj7'),
               MyChord('F3', 4, 'min7'),
@@ -769,7 +769,7 @@ def main():
         m.initialize()
         measures.genomes.append(m)
 
-    phrases = PhrasePopulation(32)
+    phrases = PhrasePopulation(64)
     for itr in range(phrases.size):
         p = Phrase(length=measures_per_phrase, number_size=phrase_genome_len)
         p.initialize()
@@ -777,8 +777,8 @@ def main():
 
     if '--resume' in sys.argv:
         print("Loading measure & phrase populations from files")
-        measures.load('measures_19.np')
-        phrases.load('phrases_19.np')
+        measures.load('measures_99.np')
+        phrases.load('phrases_99.np')
     if '--manual' in sys.argv:
         manual = True
         ff = None
