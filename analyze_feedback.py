@@ -4,7 +4,7 @@ import csv
 
 
 def main():
-    with open('feedback/peter_manual_1_measure_feedback.csv', 'rb') as csv_file:
+    with open('./feedback/peter_manual_1_measure_feedback.csv', 'rwb') as csv_file:
         reader = csv.reader(csv_file, delimiter=',')
         for row in reader:
             print(row)
