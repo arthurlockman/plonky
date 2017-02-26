@@ -735,7 +735,7 @@ def main():
         print("waiting 10 seconds so you can attach a debugger...")
         time.sleep(10)
 
-    measure_pop_size = 128
+    measure_pop_size = 32
     smallest_note = 8
     # one measure of each chord for 4 beats each
     chords = [MyChord('C3', 8, 'maj7'),
@@ -756,7 +756,7 @@ def main():
               ]
 
     metadata = Metadata('C', chords, '4/4', 140, smallest_note, 60)
-    measures_per_phrase = 16
+    measures_per_phrase = 8
 
     phrase_genome_len = log(measure_pop_size, 2)
     if not phrase_genome_len.is_integer():
@@ -769,7 +769,7 @@ def main():
         m.initialize()
         measures.genomes.append(m)
 
-    phrases = PhrasePopulation(64)
+    phrases = PhrasePopulation(48)
     for itr in range(phrases.size):
         p = Phrase(length=measures_per_phrase, number_size=phrase_genome_len)
         p.initialize()
