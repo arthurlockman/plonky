@@ -54,6 +54,11 @@ class Metadata:
 def create_stream(phrases, measures, metadata):
     population_lead_part = music21.stream.Part()
     population_lead_part.append(music21.instrument.Trumpet())
+    # insert just one midi 0 note to allow the piece to start with a rest
+    n = music21.note.Note(music21.pitch.Pitch('C0'))
+    n.volume.velocity = 1
+    population_lead_part.insert(0, n)
+
     for phrase in phrases:
         lead_part = phrase_to_parts(phrase, measures, metadata)
         population_lead_part.append(lead_part)

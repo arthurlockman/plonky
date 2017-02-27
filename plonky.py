@@ -777,8 +777,8 @@ def main():
 
     if '--resume' in sys.argv:
         print("Loading measure & phrase populations from files")
-        measures.load('measures_99.np')
-        phrases.load('phrases_99.np')
+        measures.load('measures_14.np')
+        phrases.load('phrases_14.np')
     if '--manual' in sys.argv:
         manual = True
         ff = None
@@ -802,21 +802,24 @@ def main():
         metadata.backing_stream = None
 
     if '--play' in sys.argv:
+        metadata.backing_velocity = 4
+        set_stream_velocity(metadata.backing_stream, metadata.backing_velocity)
         print("playing generation")
-        metadata.backing_velocity = 5
-        phrases.play(measures, metadata, best_n_phrases=16)
+        phrases.play(measures, metadata)
         return
     elif '--render' in sys.argv:
+        _pos = sys.argv.index('--render')
+        filename = sys.argv[_pos + 1]
         print("rendering generation")
-        if os.path.exists('output.mid'):
-            if raw_input("overwrite output.mid? [y/n]") == 'y':
-                phrases.render_midi(measures, metadata, 'output.mid', best_n_phrases=16)
+        if os.path.exists(filename):
+            if raw_input("overwrite " + filename + "? [y/n]") == 'y':
+                phrases.render_midi(measures, metadata, filename)
                 return
             else:
                 print("Ignoring.")
                 return
         else:
-            phrases.render_midi(measures, metadata, 'output.mid', best_n_phrases=16)
+            phrases.render_midi(measures, metadata, filename)
             return
 
     num_generations = 15
