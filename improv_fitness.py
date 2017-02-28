@@ -98,7 +98,7 @@ tf.app.flags.DEFINE_integer(
     'steps_per_iteration', 1,
     'The number of melody steps to take per beam search iteration.')
 tf.app.flags.DEFINE_string(
-    'log', 'INFO',
+    'log', 'ERROR',
     'The threshold for what messages will be logged DEBUG, INFO, WARN, ERROR, '
     'or FATAL.')
 setattr(FLAGS, 'config', 'chord_pitches_improv')
