@@ -804,7 +804,7 @@ def main():
             phrases.render_midi(measures, metadata, filename)
             return
 
-    if '--always-render' in sys.argv:
+    if '--always_render' in sys.argv:
         always_render = True
     else:
         always_render = False
@@ -833,7 +833,8 @@ def main():
         measures.save('measures_%i.np' % itr)
         phrases.save('phrases_%i.np' % itr)
         if always_render:
-            phrases.render_midi(measures, metadata, 'gen_%i.mid' % itr)
+            print("Rendering gen_%i.mid" % itr)
+            phrases.render_midi(measures, metadata, 'gen_%i.mid' % itr, best_n_phrases=1)
 
         # do mutation on measures
         measures = mutate_and_cross(measures, Measure.mutate)
