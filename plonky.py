@@ -11,7 +11,7 @@ import numpy as np
 from bitstring import BitStream, BitArray
 
 from converter import Metadata, set_stream_velocity, MyChord, measure_to_parts, create_stream
-from fitness import FitnessFunction
+from improv_fitness import FitnessFunction
 from ga import Genome, Population, mutate_and_cross, uint_to_bit_str
 from non_blocking_input import NonBlockingInput
 
@@ -28,7 +28,7 @@ class Measure(Genome):
                 # rest
                 bit_str += uint_to_bit_str(value=0, num_bits=4)
             elif e < 0.4:
-                # hold
+                # hold/sustain
                 bit_str += uint_to_bit_str(value=15, num_bits=4)
             else:
                 # new note
@@ -648,37 +648,30 @@ def manual_fitness(phrases, measures, metadata, nbinput):
 
 def automatic_fitness(phrases, measures, metadata, ff):
     phrase_genomes = phrases.genomes
-    population_stream = music21.stream.Stream()
-    population_stream.append(music21.tempo.MetronomeMark(number=metadata.tempo))
-    last_note = None
     total_population_fitness = 0
     total_population_length = 0
     iters = 0
-    for phrase in phrase_genomes:
-        measure_metadata = deepcopy(metadata)
 
+    for phrase in phrase_genomes:
         cumulative_fitness = 0
         cumulative_length = 0
         last_length = 0
         last_fitness = None
-        stream_to_evaluate = music21.stream.Stream()
+        melody = []
+
         for measure_idx in phrase:
             iters += 1
             measure = measures.genomes[measure_idx]
-            measure_lead_part, beat_idx, chord_idx = measure_to_parts(measure, measure_metadata)
-            stream_to_evaluate.append(measure_lead_part)
 
-            measure_metadata.chords = measure_metadata.chords[chord_idx:]
-            if len(measure_metadata.chords) == 0:
-                measure_metadata.chords = deepcopy(metadata.chords)
-            measure_metadata.chords[0].beats -= beat_idx
+            for note in measure:
+                if note == 0:  # rest
+                    melody += ([-1] * metadata.events_per_note)
+                elif note == 15:  # sustain
+                    melody += ([-2] * metadata.events_per_note)
+                else:
+                    melody += ([note] * metadata.events_per_note)
 
-            mf = music21.midi.translate.streamToMidiFile(stream_to_evaluate.flat)
-            tmp_midi_name = '.tmp.mid'
-            mf.open(tmp_midi_name, 'wb')
-            mf.write()
-            mf.close()
-            cumulative_fitness, cumulative_length = ff.evaluate_fitness(tmp_midi_name)
+            cumulative_fitness, cumulative_length = ff.evaluate_fitness(melody_as_array=melody)
 
             # TODO: this is a workaround for a bug and should be removed eventually
             if cumulative_fitness is None:
@@ -689,39 +682,23 @@ def automatic_fitness(phrases, measures, metadata, ff):
 
             # compute change in fitness caused by the new measure
             delta_length = cumulative_length - last_length
+            if delta_length == 0:
+                print(measure, " got 0 length. reinitializing")
+                measure.initialize()
+                continue
+
             if last_fitness:
                 delta_fitness = cumulative_fitness - last_fitness
             else:
                 delta_fitness = cumulative_fitness
 
-            if delta_length == 0:
-                # emergency repair! empty measure!
-                print("Emergency repair on empty measure:", measure)
-                measure.initialize()
-            else:
+            last_fitness = cumulative_fitness
+            last_length = cumulative_length
+            scaled_fitness = int(5 * delta_fitness / delta_length + 10 * delta_length)
+            measure.fitness = scaled_fitness
 
-                last_fitness = cumulative_fitness
-                last_length = cumulative_length
-                # TODO: should be delta_fitness not cumulative_fitness
-                scaled_fitness = int(10 * cumulative_fitness)
-                measure.fitness = scaled_fitness
-                phrase.fitness = scaled_fitness
-                # print("%i out of %i" % (iters, phrases.size * phrase_genomes[0].length))
-
-                # add penalty for empty bars
-                empty = True
-                for note in measure:
-                    if 0 < note < 15:
-                        empty = False
-                if empty:
-                    measure.fitness -= 100
-
-                # penalty for too many 16th notes
-                # for note in measure:
-                #     if last_note:
-                #         if (0 < note < 15) and (0 < last_note < 15):
-                #             measure.fitness -= 10
-                #     last_note = note
+        phrase_scaled_fitness = int(10 * cumulative_fitness / cumulative_length)
+        phrase.fitness += phrase_scaled_fitness
 
         total_population_fitness += cumulative_fitness
         total_population_length += cumulative_length
@@ -749,14 +726,14 @@ def main():
               MyChord('D3', 4, 'maj7'),
               MyChord('D3', 4, 'min7'),
               MyChord('G3', 4, 'maj7'),
-              MyChord('C3', 4, 'maj7'),
-              MyChord('E-3', 4, 'maj7'),
-              MyChord('A-3', 4, 'maj7'),
-              MyChord('D-3', 4, 'maj7'),
+              MyChord('C3', 2, 'maj7'),
+              MyChord('E-3', 2, 'maj7'),
+              MyChord('A-3', 2, 'maj7'),
+              MyChord('D-3', 2, 'maj7'),
               ]
 
     metadata = Metadata('C', chords, '4/4', 140, smallest_note, 60)
-    measures_per_phrase = 8
+    measures_per_phrase = 16
 
     phrase_genome_len = log(measure_pop_size, 2)
     if not phrase_genome_len.is_integer():
@@ -769,16 +746,18 @@ def main():
         m.initialize()
         measures.genomes.append(m)
 
-    phrases = PhrasePopulation(48)
+    phrases = PhrasePopulation(24)
     for itr in range(phrases.size):
         p = Phrase(length=measures_per_phrase, number_size=phrase_genome_len)
         p.initialize()
         phrases.genomes.append(p)
 
     if '--resume' in sys.argv:
-        print("Loading measure & phrase populations from files")
-        measures.load('measures_14.np')
-        phrases.load('phrases_14.np')
+        gen_idx = sys.argv.index('--resume') + 1
+        gen_num = sys.argv[gen_idx]
+        print("Loading measure & phrase population " + gen_num + " from files")
+        measures.load('measures_' + gen_num + '.np')
+        phrases.load('phrases_' + gen_num + '.np')
     if '--manual' in sys.argv:
         manual = True
         ff = None
@@ -788,7 +767,7 @@ def main():
     else:
         manual = False
         nbinput = None
-        ff = FitnessFunction()
+        ff = FitnessFunction(chords)
         print("Using automatic fitness function")
 
     if '--backing' in sys.argv:
@@ -838,13 +817,9 @@ def main():
             manual_fitness(phrases, measures, metadata, nbinput)
         else:
             f = automatic_fitness(phrases, measures, metadata, ff)
-            # assign_fitness_penalize_jumps(phrases, measures, metadata)
-            # assign_fitness_reward_notes(phrases, measures, metadata)
             if f > max_f:
                 max_f = f
                 print('next best gen is ', itr)
-
-
 
         # save progress
         measures.save('measures_%i.np' % itr)

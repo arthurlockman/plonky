@@ -80,16 +80,28 @@ tf.app.flags.DEFINE_string(
     'log', 'ERROR',
     'The threshold for what messages will be logged DEBUG, INFO, WARN, ERROR, '
     'or FATAL.')
-# tf.app.flags.DEFINE_string(
-#     'hparams', "{'batch_size':64,'rnn_layer_sizes':[64,64]}",
-#     'something')
-#setattr(FLAGS, 'config', 'lookback_rnn')
-setattr(FLAGS, 'config', 'attention_rnn')
+tf.app.flags.DEFINE_integer(
+    'steps_per_chord', 16,
+    'The number of melody steps to take per backing chord. Each step is a 16th '
+    'of a bar, so if backing_chords = "C G Am F" and steps_per_chord = 16, '
+    'four bars will be generated.')
+tf.app.flags.DEFINE_boolean(
+    'render_chords', False,
+    'If true, the backing chords will also be rendered as notes in the output '
+    'MIDI files.')
+tf.app.flags.DEFINE_string(
+    'backing_chords', 'C G Am F C G F C',
+    'A string representation of a chord progression, with chord symbols '
+    'separated by spaces. For example: "C Dm7 G13 Cmaj7". The duration of each '
+    'chord, in steps, is specified by the steps_per_chord flag.')
 setattr(FLAGS, 'hparams', "{'batch_size':64,'rnn_layer_sizes':[64,64]}")
+setattr(FLAGS, 'config', 'lookback_rnn')
+#setattr(FLAGS, 'config', 'attention_rnn')
 #setattr(FLAGS, 'run_dir', 'logdir/20000')
-setattr(FLAGS, 'run_dir', 'logdir/30000')
+#setattr(FLAGS, 'run_dir', 'logdir/30000')
 # setattr(FLAGS, 'run_dir', 'logdir/jazzomat')
-#setattr(FLAGS, 'bundle_file', '/home/peter/Projects/magenta/bundles/lookback_rnn.mag')
+setattr(FLAGS, 'bundle_file', '/home/peter/Projects/magenta/bundles/lookback_rnn.mag')
+#setattr(FLAGS, 'bundle_file', '/home/peter/Projects/magenta/bundles/attention_rnn.mag')
 
 
 def get_checkpoint():
@@ -164,7 +176,7 @@ class FitnessFunction:
         extracted_melodies, _ = mm.extract_melodies(
             quantized_sequence, min_bars=0,
             min_unique_pitches=1, gap_bars=float('inf'),
-            ignore_polyphonic_notes=True)
+            ignore_polyphonic_notes=True, pad_end=True)
         l = len(extracted_melodies)
         if l == 0:
             print("No melodies found")

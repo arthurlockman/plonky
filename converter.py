@@ -45,6 +45,7 @@ class Metadata:
         self.ms_per_beat = (60 * 1000 / tempo)
         self.backing_velocity = backing_velocity
         self.backing_stream = None
+        self.events_per_note = int(4 * self.resolution)
 
     def __str__(self):
         return '_'.join([str(self.key), str(self.time_signature.ratioString.replace('/', '-')),
