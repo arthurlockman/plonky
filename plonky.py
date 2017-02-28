@@ -34,7 +34,7 @@ class Measure(Genome):
                 # new note
                 if last_note:
                     while True:
-                        new_note_pitch = last_note + np.random.randint(-4, 5)
+                        new_note_pitch = last_note + np.random.randint(-3, 4)
                         if 0 < new_note_pitch < 15:
                             break
                 else:
@@ -231,9 +231,9 @@ class Measure(Genome):
             Measure.sort_ascending,
             Measure.sort_descending,
             Measure.transpose,
-            Measure.time_stretch,
-            Measure.end_time_stretch,
-            Measure.fill,
+            # Measure.time_stretch,
+            # Measure.end_time_stretch,
+            # Measure.fill,
         ]
 
         # do nothing to parents or baby1.
@@ -453,7 +453,7 @@ class PhrasePopulation(Population):
             # sort and pick the best n phrases
             genomes = sorted(self.genomes, key=lambda p: p.fitness)[:best_n_phrases]
         else:
-            genomes = self.genomes
+            genomes = sorted(self.genomes, key=lambda p: p.fitness)
 
         population_stream = create_stream(genomes, measures, metadata)
         midi_file = music21.midi.translate.streamToMidiFile(population_stream)
@@ -467,9 +467,11 @@ class PhrasePopulation(Population):
             # sort and pick the best n phrases
             genomes = sorted(self.genomes, key=lambda p: p.fitness)[:best_n_phrases]
         else:
-            genomes = self.genomes
+            genomes = sorted(self.genomes, key=lambda p: p.fitness)
 
+        print(genomes[0], measures.genomes[genomes[0][0]])
         population_stream = create_stream(genomes, measures, metadata)
+        population_stream.show()
         sp = music21.midi.realtime.StreamPlayer(population_stream)
         sp.play()
 
@@ -746,7 +748,7 @@ def main():
         m.initialize()
         measures.genomes.append(m)
 
-    phrases = PhrasePopulation(24)
+    phrases = PhrasePopulation(48)
     for itr in range(phrases.size):
         p = Phrase(length=measures_per_phrase, number_size=phrase_genome_len)
         p.initialize()
@@ -782,7 +784,8 @@ def main():
 
     if '--play' in sys.argv:
         metadata.backing_velocity = 4
-        set_stream_velocity(metadata.backing_stream, metadata.backing_velocity)
+        if metadata.backing_stream:
+            set_stream_velocity(metadata.backing_stream, metadata.backing_velocity)
         print("playing generation")
         phrases.play(measures, metadata)
         return
@@ -800,6 +803,11 @@ def main():
         else:
             phrases.render_midi(measures, metadata, filename)
             return
+
+    if '--always-render' in sys.argv:
+        always_render = True
+    else:
+        always_render = False
 
     num_generations = 15
     if '--generations' in sys.argv:
@@ -824,6 +832,8 @@ def main():
         # save progress
         measures.save('measures_%i.np' % itr)
         phrases.save('phrases_%i.np' % itr)
+        if always_render:
+            phrases.render_midi(measures, metadata, 'gen_%i.mid' % itr)
 
         # do mutation on measures
         measures = mutate_and_cross(measures, Measure.mutate)
