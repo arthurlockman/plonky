@@ -32,9 +32,6 @@ if __name__ == '__main__':
 
     repeated_chords = ['C', 'E', 'F', 'G']
 
-    # TODO: why must this be here? https://groups.google.com/a/tensorflow.org/forum/#!topic/magenta-discuss/nlfd1xkrq6Q
-    # repeated_chords.append('C')
-
     backing_chords = magenta.music.ChordProgression(repeated_chords)
 
     melody_as_array = [60, 60, 60, 60]

@@ -122,7 +122,7 @@ def get_bundle():
 
 class FitnessFunction:
 
-    def __init__(self, chords):
+    def __init__(self, chords=None, raw_chords=None):
         """Saves bundle or runs generator based on flags."""
         tf.logging.set_verbosity(FLAGS.log)
 
@@ -134,18 +134,39 @@ class FitnessFunction:
             bundle=get_bundle())
         self.generator.initialize()
 
-        repeated_chords = []
-        for my_chord in chords:
-            root = my_chord.root[:-1].replace('-', 'b')
-            name = root + my_chord.shape
-            for _ in range(my_chord.beats * 4):
-                repeated_chords.append(name)
-
-        # TODO: why must this be here? https://groups.google.com/a/tensorflow.org/forum/#!topic/magenta-discuss/nlfd1xkrq6Q
-        repeated_chords.append('C')
-
-        self.backing_chords = magenta.music.ChordProgression(repeated_chords)
+        if chords:
+            repeated_chords = []
+            for my_chord in chords:
+                root = my_chord.root[:-1].replace('-', 'b')
+                name = root + my_chord.shape
+                for _ in range(my_chord.beats * 4):
+                    repeated_chords.append(name)
+            self.backing_chords = magenta.music.ChordProgression(repeated_chords)
+        elif raw_chords:
+            self.backing_chords = magenta.music.ChordProgression(raw_chords)
+        else:
+            raise ValueError("You must give either chords or raw_chords")
 
     def evaluate_fitness(self, melody_as_array):
         melody = magenta.music.Melody(melody_as_array)
         return self.generator._model.melody_log_likelihood(melody, self.backing_chords), len(melody)
+
+    def evaluate_fitness_midi(self, midi_sequence_file):
+        tf_sequence = magenta.music.midi_file_to_sequence_proto(midi_sequence_file)
+        quantized_sequence = mm.quantize_note_sequence(
+            tf_sequence, 4)
+        extracted_melodies, _ = mm.extract_melodies(
+            quantized_sequence, min_bars=0,
+            min_unique_pitches=1, gap_bars=float('inf'),
+            ignore_polyphonic_notes=True, pad_end=True)
+        l = len(extracted_melodies)
+        if l == 0:
+            print("No melodies found")
+        elif l > 1:
+            sys.exit("too many melodies found")
+
+        if extracted_melodies and extracted_melodies[0]:
+            melody = extracted_melodies[0]
+        else:
+            return None, None
+        return self.generator._model.melody_log_likelihood(melody, self.backing_chords), len(extracted_melodies[0])
