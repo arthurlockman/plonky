@@ -10,23 +10,39 @@ roots = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 shapes = ['maj7', 'min7', 'maj', 'min', 'dim']
 
 # real jazz vs random melody + random chords
-if 1:
-    N = 20
-    random_fitness = []
-
-    print("random notes")
+if 0:
+    tonic_fitness = []
+    print("Just the tonic")
     for _ in range(7):
         melody = []
         raw_chords = []
         l = np.random.randint(100, 400)
         for i in range(l):
-            melody.append(np.random.randint(0, 127))
-            chord = np.random.choice(roots) + np.random.choice(shapes)
+            chord_idx = np.random.randint(0, len(roots))
+            chord = roots[chord_idx]
+            melody.append(60 + chord_idx)
             raw_chords.append(chord)
 
         ff = improv_fitness.FitnessFunction(raw_chords=raw_chords)
         f, l = ff.evaluate_fitness(melody)
-        print("%3.3f" % f)
+        print("%3.3f" % (f/l))
+        tonic_fitness.append(f / l)
+
+
+    random_fitness = []
+    print("random notes")
+    for _ in range(7):
+        melody = []
+        raw_chords = []
+        l = np.random.randint(20, 200)
+        for i in range(l):
+            melody += [np.random.randint(0, 127)] * 4
+            chord = np.random.choice(roots) + np.random.choice(shapes)
+            raw_chords += [chord] * 4
+
+        ff = improv_fitness.FitnessFunction(raw_chords=raw_chords)
+        f, l = ff.evaluate_fitness(melody)
+        print("%3.3f" % (f/l))
         random_fitness.append(f / l)
 
     jazz_fitness = []
@@ -138,10 +154,11 @@ if 1:
         ff = improv_fitness.FitnessFunction(raw_chords=chords)
         f, length = ff.evaluate_fitness_midi("jazz_midis/" + midi_filename)
         jazz_fitness.append(f / length)
-        print(midi_filename.strip("_FINAL.mid"), '%3.3f' % f)
+        print(midi_filename.strip("_FINAL.mid"), '%3.3f' % (f/l))
 
     plt.figure()
     plt.plot(random_fitness, linestyle='None', marker='o', label='random')
+    plt.plot(tonic_fitness, linestyle='None', marker='o', label='just tonic')
     plt.plot(jazz_fitness, linestyle='None', marker='o', label='real jazz')
     plt.ylabel("Fitness")
     plt.xlabel('sample')
