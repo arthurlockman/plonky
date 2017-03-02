@@ -650,20 +650,19 @@ def manual_fitness(phrases, measures, metadata, nbinput):
 
 def automatic_fitness(phrases, measures, metadata, ff):
     phrase_genomes = phrases.genomes
-    total_population_fitness = 0
-    total_population_length = 0
-    iters = 0
+    total_phrase_fitness = 0
+    total_measure_fitness = 0
 
     for phrase in phrase_genomes:
+        phrase.fitness = 0  # reset fitness
+        last_note = None
         cumulative_fitness = 0
-        cumulative_length = 0
-        last_length = 0
         last_fitness = None
         melody = []
 
         for measure_idx in phrase:
-            iters += 1
             measure = measures.genomes[measure_idx]
+            measure.fitness = 0  # reset fitness
 
             for note in measure:
                 if note == 0:  # rest
@@ -673,7 +672,7 @@ def automatic_fitness(phrases, measures, metadata, ff):
                 else:
                     melody += ([note] * metadata.events_per_note)
 
-            cumulative_fitness, cumulative_length = ff.evaluate_fitness(melody_as_array=melody)
+            cumulative_fitness, _ = ff.evaluate_fitness(melody_as_array=melody)
 
             # TODO: this is a workaround for a bug and should be removed eventually
             if cumulative_fitness is None:
@@ -683,30 +682,33 @@ def automatic_fitness(phrases, measures, metadata, ff):
                 cumulative_fitness = int(cumulative_fitness)
 
             # compute change in fitness caused by the new measure
-            delta_length = cumulative_length - last_length
-            if delta_length == 0:
-                print(measure, " got 0 length. reinitializing")
-                measure.initialize()
-                continue
-
             if last_fitness:
                 delta_fitness = cumulative_fitness - last_fitness
             else:
                 delta_fitness = cumulative_fitness
 
+            #
             last_fitness = cumulative_fitness
-            last_length = cumulative_length
-            scaled_fitness = int(5 * delta_fitness / delta_length + 10 * delta_length)
-            measure.fitness = scaled_fitness
+            measure.fitness = delta_fitness
 
-        phrase_scaled_fitness = int(10 * cumulative_fitness / cumulative_length)
-        phrase.fitness += phrase_scaled_fitness
+            for note in measure:
+                if 0 < note < 15:
+                    if last_note:
+                        jump_size = last_note - note
+                        if jump_size == 0:
+                            measure.fitness -= 2
+                        if jump_size > 2:
+                            measure.fitness -= 10 * jump_size
+                            phrase.fitness -= 10 * jump_size
+                    last_note = note
 
-        total_population_fitness += cumulative_fitness
-        total_population_length += cumulative_length
+            total_measure_fitness += measure.fitness
 
-    print('fitness:', total_population_fitness, ' length:', total_population_length)
-    return total_population_fitness / total_population_length
+        phrase.fitness = cumulative_fitness
+        total_phrase_fitness += phrase.fitness
+
+    print('phrase fitness:', total_phrase_fitness, 'measure fitness:', total_measure_fitness)
+    return total_phrase_fitness + total_measure_fitness
 
 
 def main():
