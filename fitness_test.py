@@ -28,15 +28,15 @@ if 1:
         return ff.evaluate_fitness(".temp.mid")
 
     for _ in range(20):
-        f, num_arpeggios = random_midi(ff)
-        random_fitness.append(f / num_arpeggios)
+        f, length = random_midi(ff)
+        random_fitness.append(f / length)
 
     jazz_fitness = []
     for filename in os.listdir("jazz_midis"):
         if filename.endswith(".mid"):
             try:
-                f, num_arpeggios = ff.evaluate_fitness("jazz_midis/" + filename)
-                jazz_fitness.append(f / num_arpeggios)
+                f, length = ff.evaluate_fitness("jazz_midis/" + filename)
+                jazz_fitness.append(f / length)
             except Exception:
                 #print(filename + " is invalid")
                 pass
@@ -49,9 +49,10 @@ if 1:
     plt.ylabel("Fitness")
     plt.xlabel('sample')
     plt.legend()
+    plt.savefig('random_vs_real_jazz.png')
 
 # arpeggio tonic
-if 0:
+if 1:
     arpeggio_fitness = []
     for tonic in range(0, 110):
         s = music21.stream.Stream()
@@ -75,9 +76,10 @@ if 0:
     plt.plot(arpeggio_fitness, linestyle='None', marker='o', label='arpeggio')
     plt.ylabel("Fitness"),
     plt.xlabel('arpeggio tonic')
+    plt.savefig('arpeggio_tonic.png')
 
 # arpeggio lengths
-if 0:
+if 1:
     arpeggio_fitness = []
     arpeggio_lengths = []
     for _ in range(0, 50):
@@ -108,8 +110,9 @@ if 0:
     plt.ylabel("Fitness")
     plt.title("Major Triad Arpeggios")
     plt.xlabel("Arpeggio Length")
+    plt.savefig('arpeggio_length.png')
 
-if 0:
+if 1:
     random_fitness = []
     lengths = []
     for num_measures in range(1, 50):
@@ -135,9 +138,10 @@ if 0:
     plt.title("Random Midi")
     plt.ylabel("Fitness")
     plt.xlabel('Number of Measures')
+    plt.savefig('ranodm_midi_length.png')
 
 # note lengths
-if 0:
+if 1:
     measures = 10
     lengths = []
     fitness = []
@@ -165,6 +169,7 @@ if 0:
     plt.title("Note Lengths")
     plt.ylabel('fitness')
     plt.xlabel('length, 1 == whole, 16=16ths')
+    plt.savefig('note_duration.png')
 
 # arpeggio tonic
 if 0:

@@ -1,6 +1,6 @@
 jazz_midis
-saves/*.np
 .ipynb_checkpoints
+saves/*
 __pycache__
 *.mid
 wjazzd.db

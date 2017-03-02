@@ -26,17 +26,15 @@ chord_shapes = {
 
 class MyChord:
 
-    def __init__(self, root, beats, shape, accompaniment, bass=None):
+    def __init__(self, root, beats, shape):
         self.root = root
         self.beats = beats
         self.shape = shape
-        self.accompaniment = accompaniment
-        self.bass = bass
 
 
 class Metadata:
 
-    def __init__(self, key, chords, time_signature, tempo, smallest_note, backing_velocity, accompaniment=None):
+    def __init__(self, key, chords, time_signature, tempo, smallest_note, backing_velocity):
         self.key = music21.key.Key(key)
         self.chords = chords
         self.time_signature = music21.meter.TimeSignature(time_signature)
@@ -45,42 +43,61 @@ class Metadata:
         self.notes_per_measure = int(smallest_note * self.time_signature.numerator / self.time_signature.denominator)
         self.tempo = tempo
         self.ms_per_beat = (60 * 1000 / tempo)
-        self.accompaniment = accompaniment
         self.backing_velocity = backing_velocity
+        self.backing_stream = None
+        self.events_per_note = int(4 * self.resolution)
 
     def __str__(self):
         return '_'.join([str(self.key), str(self.time_signature.ratioString.replace('/', '-')),
                         str(self.resolution), str(self.tempo) + 'bpm'])
 
 
-def phrase_to_parts(phrase, measure_population, metadata, accompany=False):
+def create_stream(phrases, measures, metadata):
+    population_lead_part = music21.stream.Part()
+    population_lead_part.insert(0, music21.instrument.Trumpet())
+
+    for phrase in phrases:
+        lead_part = phrase_to_parts(phrase, measures, metadata)
+        population_lead_part.append(lead_part)
+
+    if metadata.backing_stream:
+        # TODO: somehow copy/extend the stream the correct number of times
+        # so the backing track doesn't have to be hardcoded length
+        stream = deepcopy(metadata.backing_stream)
+    else:
+        stream = music21.stream.Stream()
+
+    # put Metronome and lead at the beginning
+    stream.insert(0, music21.tempo.MetronomeMark(number=metadata.tempo))
+    stream.insert(0, population_lead_part.flat)
+    # insert just one midi 0 note to allow the piece to start with a rest
+    n = music21.note.Note(music21.pitch.Pitch('C0'))
+    n.volume.velocity = 1
+    population_lead_part.insert(0, n)
+
+    return stream
+
+
+def phrase_to_parts(phrase, measure_population, metadata):
     measure_metadata = deepcopy(metadata)
 
     phrase_lead_part = music21.stream.Part()
-    phrase_backing_part = music21.stream.Part()
-    phrase_bass_part = music21.stream.Part()
 
     for measure_idx in phrase:
         measure = measure_population.genomes[measure_idx]
-        lead_part, backing_part, bass_part, beat_idx, chord_idx = measure_to_parts(measure,
-                                                                                   measure_metadata,
-                                                                                   accompany=accompany)
+        lead_part, beat_idx, chord_idx = measure_to_parts(measure, measure_metadata)
         phrase_lead_part.append(lead_part)
-        phrase_backing_part.append(backing_part)
-        phrase_bass_part.append(bass_part)
 
         measure_metadata.chords = measure_metadata.chords[chord_idx:]
         if len(measure_metadata.chords) == 0:
             measure_metadata.chords = deepcopy(metadata.chords)
         measure_metadata.chords[0].beats -= beat_idx
 
-    return phrase_lead_part, phrase_backing_part, phrase_bass_part
+    return phrase_lead_part
 
 
-def measure_to_parts(measure, metadata, accompany=False):
+def measure_to_parts(measure, metadata):
     lead_part = music21.stream.Part()
-    backing_part = music21.stream.Part()
-    bass_part = music21.stream.Part()
 
     # do midi conversion
     chord_idx = 0
@@ -90,27 +107,6 @@ def measure_to_parts(measure, metadata, accompany=False):
         note_chord_offsets = chord_shapes[current_chord_info.shape]['offsets']
         genes_per_chord = current_chord_info.beats / metadata.resolution
         assert(genes_per_chord.is_integer())
-
-        if accompany:
-            root = music21.note.Note(current_chord_info.root)
-            if idx % (metadata.notes_per_measure/2) == 0:
-                midi_numbers = [root.pitch.midi + offset for offset in current_chord_info.accompaniment]
-                chord = music21.chord.Chord(midi_numbers)
-                # Currently we use half notes
-                chord.quarterLength = 2
-                chord.volume.velocity = metadata.backing_velocity
-                backing_part.append(chord)
-
-                if idx == 0 and current_chord_info.bass:
-                    for ioi, offset in enumerate(current_chord_info.bass):
-                        pitch = root.pitch.midi + offset
-                        walking_bass_note = music21.note.Note(pitch)
-                        if root.pitch.midi > 60:
-                            walking_bass_note = walking_bass_note.transpose(-24)
-                        else:
-                            walking_bass_note = walking_bass_note.transpose(-12)
-                        walking_bass_note.volume.velocity = metadata.backing_velocity
-                        bass_part.insert(ioi, walking_bass_note)
 
         if genjam_e == 15:
             # hold the note
@@ -136,4 +132,10 @@ def measure_to_parts(measure, metadata, accompany=False):
             idx = 0
             chord_idx += 1
 
-    return lead_part, backing_part, bass_part, idx * metadata.resolution, chord_idx
+    return lead_part, idx * metadata.resolution, chord_idx
+
+
+def set_stream_velocity(stream, velocity):
+    for note in stream.recurse():
+        if isinstance(note, music21.note.Note) or isinstance(note, music21.chord.Chord):
+            note.volume.velocity = velocity

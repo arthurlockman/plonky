@@ -3,6 +3,7 @@ from __future__ import print_function, division
 import unittest
 from copy import deepcopy
 from plonky import Measure, Phrase, PhrasePopulation, MeasurePopulation
+from ga import mutate_and_cross
 
 class MutationTests(unittest.TestCase):
 
@@ -276,3 +277,56 @@ class MutationTests(unittest.TestCase):
 
         # not a very good test...
         self.assertNotEquals(p, original_p)
+
+class CrossOverTests(unittest.TestCase):
+
+    def test_cross_over(self):
+        pop = MeasurePopulation(size=6)
+        measures = pop.genomes
+
+        m0 = Measure(length=4, number_size=4)
+        m0[0] = 0
+        m0[1] = 0
+        m0[2] = 0
+        m0[3] = 0
+        m0.fitness = 0
+        measures[0] = m0
+
+        m1 = Measure(length=4, number_size=4)
+        m1[0] = 1
+        m1[1] = 1
+        m1[2] = 1
+        m1[3] = 1
+        m1.fitness = 1
+        measures[1] = m1
+
+        m2 = Measure(length=4, number_size=4)
+        m2[0] = 2
+        m2[1] = 2
+        m2[2] = 2
+        m2[3] = 2
+        m2.fitness = 2
+        measures[2] = m2
+
+        m3 = Measure(length=4, number_size=4)
+        m3[0] = 3
+        m3[1] = 3
+        m3[2] = 3
+        m3[3] = 3
+        m3.fitness = 3
+        measures[3] = m3
+
+        m4 = Measure(length=4, number_size=4)
+        m4[0] = 4
+        m4[1] = 4
+        m4[2] = 4
+        m4[3] = 4
+        m4.fitness = 4
+        measures[4] = m4
+
+        original = deepcopy(pop)
+        mutate_and_cross(pop, None)
+
+        print(original)
+        print(pop)
+
