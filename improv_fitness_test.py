@@ -10,7 +10,7 @@ roots = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 shapes = ['maj7', 'min7', 'maj', 'min', 'dim']
 
 # real jazz vs random melody + random chords
-if 0:
+if 1:
     tonic_fitness = []
     print("Just the tonic")
     for _ in range(7):
@@ -157,13 +157,9 @@ if 0:
         print(midi_filename.strip("_FINAL.mid"), '%3.3f' % (f/l))
 
     plt.figure()
-    plt.plot(random_fitness, linestyle='None', marker='o', label='random')
-    plt.plot(tonic_fitness, linestyle='None', marker='o', label='just tonic')
-    plt.plot(jazz_fitness, linestyle='None', marker='o', label='real jazz')
+    plt.boxplot([tonic_fitness, random_fitness, jazz_fitness], 0, '')
     plt.ylabel("Fitness")
-    plt.xlabel('sample')
-    plt.xticks([])
-    plt.legend()
+    plt.xticks([1,2,3], ['tonic', 'random', 'real jazz'])
     plt.savefig('random_vs_real_jazz.png')
 
 # arpeggio tonic
