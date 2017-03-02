@@ -124,7 +124,7 @@ def measure_to_parts(measure, metadata):
             tonic_midi_pitch = new_note.pitch.midi
             new_note.pitch.midi = tonic_midi_pitch + note_chord_offsets[genjam_e - 1]
             # Here is where you'd account for velocity
-            new_note.volume.velocity = 127
+            new_note.volume.velocity = 100 + int( new_note.midi.pitch / 5)
             lead_part.append(new_note)
 
         idx += 1
