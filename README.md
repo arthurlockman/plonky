@@ -56,10 +56,11 @@ To run, simply use:
 
 The flags are detailed below:
 
-* `--debug` Allows for attaching a debugger.
-* `--resume` Resumes the most recent training session.
+* `--debug` Allows for attaching a debugger. Just makes the program wait 10 seconds.
+* `--resume arg` Resumes the most recent training session. arg is the generation it will resume from.
 * `--manual` Runs Plonky in a manual training mode. If not supplied, it will use the automatic fitness function.
-* `--backing` For manual mode, specify a backing track to play along with the solos.
-* `--play` Play the last generation.
-* `--render` Render the last generation.
-* `--generations` The number of generations to run.
+* `--backing arg` For manual mode, specify a backing track to play along with the solos. arg is a musicxml file.
+* `--play` Play the last generation. If you call this with --backing it will also play the backing track
+* `--render arg` Render the last generation to a midi file. If you call this with --backing it will include the backing track. Arg is the filename to save.
+* `--generations arg` The number of generations to run.
+* `--always_render` Each generation will render to midi automatically.
