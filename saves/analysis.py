@@ -5,7 +5,10 @@ import sys
 measure_pop_size = 32
 phrase_pop_size = 48
 max_gen = 15
+max_note = 32
+max_duration = 16
 
+# MEASURES
 counts_over_time = np.ndarray((measure_pop_size, max_gen))
 for gen_num in range(0, max_gen):
     filename = 'phrases_%i.np' % gen_num
@@ -17,38 +20,62 @@ for gen_num in range(0, max_gen):
         for g in genome.split(' ')[:-1]:
             counts[int(g)] += 1
     counts_over_time[:,gen_num] = counts
-    print(np.sum(counts))
 plt.figure()
+plt.yticks([])
 plt.stackplot(np.arange(max_gen), *counts_over_time)
-plt.xlabel('measures used in phrase population')
+plt.title('measures used in phrase population')
+plt.xlabel("generation")
 plt.savefig('phrase_distrobution.png')
 
-# TODO: measures
-mfile = 'measures_%i.np' % gen_num
-
-# # Distrobution of Durations
-def duration_hist(filename, title):
+# NOTES
+counts_over_time = np.ndarray((max_note, max_gen))
+for gen_num in range(0, max_gen):
+    filename = 'measures_%i.np' % gen_num
     pop_f = open(filename,'r')
     pop = [l.strip('\n') for l in pop_f.readlines()]
-    durations = []
+    counts = np.zeros(max_note)
+    for genome in pop:
+        # -1 is to ignore fitness
+        for g in genome.split(' ')[:-1]:
+            counts[int(g)] += 1
+    counts_over_time[:,gen_num] = counts
+plt.figure()
+stuff = plt.stackplot(np.arange(max_gen), *counts_over_time)
+plt.title('notes, rests, and sustains, used in measures population')
+plt.xlabel("generation")
+plt.savefig('measures_distrobution.png')
+
+# DURATIONS
+counts_over_time = np.ndarray((max_duration, max_gen))
+for gen_num in range(0, max_gen):
+    filename = 'measures_%i.np' % gen_num
+    pop_f = open(filename,'r')
+    pop = [l.strip('\n') for l in pop_f.readlines()]
+    counts = np.zeros(max_duration)
     note_on = False
     duration = -1
     for genome in pop:
         for g_s in genome.split(' ')[:-1]:
             g_i = int(g_s)
-            if 0 <= g_i < 15:
+            if 0 < g_i < (max_note - 1):
                 if note_on:
-                    durations.append(duration)
+                    counts[duration - 1] += 1
                 duration = 1
                 note_on = True
-            elif note_on and g_i == 15:
+            elif note_on and g_i == (max_note - 1):
                 duration += 1
 
-    plt.figure()
-    plt.hist(durations, bins=list(range(1,8)))
-    plt.xlabel("Durations in number of 8th notes")
-    plt.savefig(gen_num + '_durations_used.png')
+    counts_over_time[:,gen_num] = counts
 
-#duration_hist(mfile, 'Durations Used')
+plt.figure()
+plt.yticks([])
+print(counts_over_time)
+stuff = plt.stackplot(np.arange(max_gen), *counts_over_time)
+plt.legend(stuff, ['8th', 'quarter', 'dotted quarter', 'half'])
+plt.yticks([])
+plt.xlabel("generation")
+plt.title("Durations of notes not included) in number of 8th notes")
+plt.savefig('durations_used.png')
+
 
 plt.show()

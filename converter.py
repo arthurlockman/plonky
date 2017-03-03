@@ -3,24 +3,28 @@ from __future__ import print_function, division
 import music21
 from copy import deepcopy
 
+SUSTAIN = 15
+MAX_NOTE = SUSTAIN - 1
+NOTE_BITS = 4
+
 # Each number is midi pitch relative to the tonic of the chord
 # Each chord shape has 14 possible things, mapping to genjam's 1-14
 
 chord_shapes = {
-    'maj': {'offsets': [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24, 26, 28, 31]},
-    'min': {'offsets': [0, 2, 3, 7, 9, 12, 14, 15, 19, 21, 24, 26, 27, 31]},
-    'maj7': {'offsets': [0, 2, 4, 7, 9, 11, 12, 14, 16, 19, 21, 23, 24, 26]},
-    '7': {'offsets': [0, 2, 4, 7, 9, 10, 12, 14, 16, 19, 21, 22, 24, 26]},
-    'min7': {'offsets': [0, 2, 3, 5, 7, 10, 12, 14, 15, 17, 19, 22, 24, 26]},
-    'min7b5': {'offsets': [0, 3, 5, 6, 8, 10, 12, 15, 17, 18, 20, 22, 24, 27]},
-    'dim': {'offsets': [0, 2, 3, 5, 6, 8, 9, 11, 12, 14, 15, 17, 18, 20]},
-    '+': {'offsets': [0, 2, 4, 6, 8, 9, 11, 12, 14, 16, 18, 20, 21, 23]},
-    '7+': {'offsets': [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26]},
-    '7#11': {'offsets': [0, 2, 4, 6, 7, 9, 10, 12, 14, 16, 18, 19, 21, 22]},
-    '7#9': {'offsets': [0, 1, 3, 4, 6, 8, 10, 12, 13, 15, 16, 18, 20, 22]},
-    '7b9': {'offsets': [0, 1, 3, 4, 6, 7, 9, 10, 12, 13, 15, 16, 18, 19]},
-    'm7b9': {'offsets': [0, 1, 3, 5, 7, 9, 10, 12, 13, 15, 17, 19, 21, 22]},
-    'maj7#11': {'offsets': [0, 2, 4, 6, 7, 9, 11, 12, 14, 16, 18, 19, 21, 24]},
+    'maj': {'offsets':      [0, 2, 4, 5, 7, 9, 12, 14, 16, 17, 19, 21, 24, 26]},
+    'maj7': {'offsets':     [0, 2, 3, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19, 21]},
+    'min': {'offsets':      [0, 2, 3, 5, 7, 9, 12, 14, 15, 19, 21, 24, 26, 27]},
+    'min7': {'offsets':     [0, 2, 3, 5, 6, 7, 9, 10, 12, 14, 15, 17, 19, 21]},
+    'min7b5': {'offsets':   [0, 3, 5, 6, 8, 10, 12, 15, 17, 18, 20, 22, 24, 27]},
+    '7': {'offsets':        [0, 2, 4, 7, 9, 10, 12, 14, 16, 19, 21, 22, 24, 26]},
+    'dim': {'offsets':      [0, 2, 3, 5, 6, 8, 9, 11, 12, 14, 15, 17, 18, 20]},
+    '+': {'offsets':        [0, 2, 4, 6, 8, 9, 11, 12, 14, 16, 18, 20, 21, 23]},
+    '7+': {'offsets':       [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26]},
+    '7#11': {'offsets':     [0, 2, 4, 6, 7, 9, 10, 12, 14, 16, 18, 19, 21, 22]},
+    '7#9': {'offsets':      [0, 1, 3, 4, 6, 8, 10, 12, 13, 15, 16, 18, 20, 22]},
+    '7b9': {'offsets':      [0, 1, 3, 4, 6, 7, 9, 10, 12, 13, 15, 16, 18, 19]},
+    'm7b9': {'offsets':     [0, 1, 3, 5, 7, 9, 10, 12, 13, 15, 17, 19, 21, 22]},
+    'maj7#11': {'offsets':  [0, 2, 4, 6, 7, 9, 11, 12, 14, 16, 18, 19, 21, 24]},
 }
 
 
@@ -30,6 +34,9 @@ class MyChord:
         self.root = root
         self.beats = beats
         self.shape = shape
+
+    def __repr__(self):
+        return self.root + self.shape
 
 
 class Metadata:
@@ -108,7 +115,7 @@ def measure_to_parts(measure, metadata):
         genes_per_chord = current_chord_info.beats / metadata.resolution
         assert(genes_per_chord.is_integer())
 
-        if genjam_e == 15:
+        if genjam_e == SUSTAIN:
             # hold the note
             if len(lead_part.notes) == 0:
                 # rest if it's the first note
@@ -123,8 +130,9 @@ def measure_to_parts(measure, metadata):
             new_note.duration.quarterLength = metadata.resolution
             tonic_midi_pitch = new_note.pitch.midi
             new_note.pitch.midi = tonic_midi_pitch + note_chord_offsets[genjam_e - 1]
+
             # Here is where you'd account for velocity
-            new_note.volume.velocity = 100 + int( new_note.midi.pitch / 5)
+            new_note.volume.velocity = 100 + int(new_note.pitch.midi / 5)
             lead_part.append(new_note)
 
         idx += 1

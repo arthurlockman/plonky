@@ -3,14 +3,13 @@ from __future__ import print_function, division
 import os
 import sys
 import time
-from copy import deepcopy
 from math import log
 import csv
 import music21
 import numpy as np
 from bitstring import BitStream, BitArray
 
-from converter import Metadata, set_stream_velocity, MyChord, measure_to_parts, create_stream
+from converter import *
 from improv_fitness import FitnessFunction
 from ga import Genome, Population, mutate_and_cross, uint_to_bit_str
 from non_blocking_input import NonBlockingInput
@@ -19,26 +18,26 @@ from non_blocking_input import NonBlockingInput
 class Measure(Genome):
 
     def initialize(self):
-        """ non random initialization, where jumps between sequential notes are between -4 and 4 inclusive """
+        """ non random initialization, where jumps between sequential notes are bounded """
         bit_str = ''
         last_note = None
         for _ in range(self.length):
             e = np.random.rand()
             if e < 0.2:
                 # rest
-                bit_str += uint_to_bit_str(value=0, num_bits=4)
+                bit_str += uint_to_bit_str(value=0, num_bits=NOTE_BITS)
             elif e < 0.4:
                 # hold/sustain
-                bit_str += uint_to_bit_str(value=15, num_bits=4)
+                bit_str += uint_to_bit_str(value=SUSTAIN, num_bits=NOTE_BITS)
             else:
                 # new note
                 if last_note:
                     while True:
                         new_note_pitch = last_note + np.random.randint(-3, 4)
-                        if 0 < new_note_pitch < 15:
+                        if 0 < new_note_pitch < SUSTAIN:
                             break
                 else:
-                    new_note_pitch = np.random.randint(1, 15)
+                    new_note_pitch = np.random.randint(1, SUSTAIN)
                 last_note = new_note_pitch
                 bit_str += uint_to_bit_str(new_note_pitch, self.number_size)
 
@@ -50,13 +49,13 @@ class Measure(Genome):
             e = np.random.rand()
             if e < 0.2:
                 # rest
-                bit_str += uint_to_bit_str(value=0, num_bits=4)
+                bit_str += uint_to_bit_str(value=0, num_bits=NOTE_BITS)
             elif e < 0.4:
                 # hold
-                bit_str += uint_to_bit_str(value=15, num_bits=4)
+                bit_str += uint_to_bit_str(value=SUSTAIN, num_bits=NOTE_BITS)
             else:
                 # new note
-                new_note_pitch = np.random.randint(1, 15)
+                new_note_pitch = np.random.randint(1, SUSTAIN)
                 bit_str += uint_to_bit_str(new_note_pitch, self.number_size)
 
         self.data = BitStream(bin=bit_str)
@@ -89,16 +88,16 @@ class Measure(Genome):
     @staticmethod
     def invert(g, population=None):
         for i in range(g.length):
-            g[i] = 15 - g[i]
+            g[i] = SUSTAIN - g[i]
 
     @staticmethod
     def sort_ascending(g, population=None):
         actual_notes = []
         zeros_and_fifteens = []
 
-        # pull out the 0's and 15's
+        # pull out the 0's and SUSTAIN's
         for i in range(g.length):
-            if g[i] == 0 or g[i] == 15:
+            if g[i] == 0 or g[i] == SUSTAIN:
                 zeros_and_fifteens.append((i, g[i]))
             else:
                 actual_notes.append(g[i])
@@ -106,7 +105,7 @@ class Measure(Genome):
         # sort the real notes
         sorted_notes = sorted(actual_notes)
 
-        # put the 0's and 15's back
+        # put the 0's and SUSTAIN's back
         for i, x in zeros_and_fifteens:
             sorted_notes.insert(i, x)
 
@@ -119,9 +118,9 @@ class Measure(Genome):
         actual_notes = []
         zeros_and_fifteens = []
 
-        # pull out the 0's and 15's
+        # pull out the 0's and SUSTAIN's
         for i in range(g.length):
-            if g[i] == 0 or g[i] == 15:
+            if g[i] == 0 or g[i] == SUSTAIN:
                 zeros_and_fifteens.append((i, g[i]))
             else:
                 actual_notes.append(g[i])
@@ -129,7 +128,7 @@ class Measure(Genome):
         # sort the real notes
         sorted_notes = sorted(actual_notes, key=lambda n: -n)
 
-        # put the 0's and 15's back
+        # put the 0's and SUSTAIN's back
         for i, x in zeros_and_fifteens:
             sorted_notes.insert(i, x)
 
@@ -142,16 +141,16 @@ class Measure(Genome):
         signed_steps = np.random.randint(1, 8)
 
         max_val = 1
-        min_val = 14
+        min_val = MAX_NOTE
         for idx in range(g.length):
-            if g[idx] == 0 or g[idx] == 15:
+            if g[idx] == 0 or g[idx] == SUSTAIN:
                 continue
             if g[idx] < min_val:
                 min_val = g[idx]
             if g[idx] > max_val:
                 max_val = g[idx]
 
-        if (14 - max_val) < (min_val - 1):
+        if (MAX_NOTE - max_val) < (min_val - 1):
             signed_steps = -signed_steps
 
         Measure._transpose(g, signed_steps)
@@ -159,11 +158,11 @@ class Measure(Genome):
     @staticmethod
     def _transpose(g, signed_steps):
         for idx in range(g.length):
-            if g[idx] == 0 or g[idx] == 15:
+            if g[idx] == 0 or g[idx] == SUSTAIN:
                 continue
             tmp = g[idx] + signed_steps
-            if tmp > 14:
-                g[idx] = 14 - (tmp - 14)
+            if tmp > MAX_NOTE:
+                g[idx] = MAX_NOTE - (tmp - MAX_NOTE)
             elif tmp < 1:
                 g[idx] = 1 + (1 - tmp)
             else:
@@ -175,7 +174,7 @@ class Measure(Genome):
         new_g = []
         for i in range(g.length//2, g.length):
             new_g.append(g[i])
-            new_g.append(15)
+            new_g.append(SUSTAIN)
 
         for idx in range(g.length):
             g[idx] = new_g[idx]
@@ -186,7 +185,7 @@ class Measure(Genome):
         new_g = []
         for i in range(g.length//2):
             new_g.append(g[i])
-            new_g.append(15)
+            new_g.append(SUSTAIN)
 
         for idx in range(g.length):
             g[idx] = new_g[idx]
@@ -210,16 +209,16 @@ class Measure(Genome):
     def fill(g):
         last_note = None
         for idx, note in enumerate(g):
-            if 0 < note < 15:
+            if 0 < note < SUSTAIN:
                 last_note = note
-            if note == 15:
+            if note == SUSTAIN:
                 if last_note:
                     if np.random.rand() < 0.5:
                         g[idx] = last_note + 1
                     else:
                         g[idx] = last_note - 1
                 else:
-                    g[idx] = np.random.randint(0, 15)
+                    g[idx] = np.random.randint(0, SUSTAIN)
 
     @staticmethod
     def mutate(parent1, parent2, baby1, baby2, population):
@@ -469,9 +468,7 @@ class PhrasePopulation(Population):
         else:
             genomes = sorted(self.genomes, key=lambda p: p.fitness)
 
-        print(genomes[0], measures.genomes[genomes[0][0]])
         population_stream = create_stream(genomes, measures, metadata)
-        population_stream.show()
         sp = music21.midi.realtime.StreamPlayer(population_stream)
         sp.play()
 
@@ -490,17 +487,9 @@ def assign_fitness_reward_notes(phrase_pop, measures, metadata):
         for measure_idx in phrase:
             measure = measures.genomes[measure_idx]
             for note in measure:
-                if 0 < note < 15:
+                if 0 < note < SUSTAIN:
                     measure.fitness += 1
                     phrase.fitness += 1
-
-
-def assign_random_fitness(phrase_pop, measures, metadata):
-    phrase_genomes = phrase_pop.genomes
-    for pidx, phrase in enumerate(phrase_genomes):
-        phrase.fitness += np.random.randint(-2, 2)
-        for measure_idx in phrase:
-            measures.genomes[measure_idx].fitness += np.random.randint(-2, 2)
 
 
 def assign_fitness_penalize_jumps(phrase_pop, measures, metadata):
@@ -511,7 +500,7 @@ def assign_fitness_penalize_jumps(phrase_pop, measures, metadata):
         for measure_idx in phrase:
             measure = measures.genomes[measure_idx]
             for note in measure:
-                if 0 < note < 15:
+                if 0 < note < SUSTAIN:
                     if last_note:
                         jump_size = last_note - note
                         sum_jumps += abs(jump_size)
@@ -532,10 +521,10 @@ def assign_fitness_penalize_rests(phrase_pop, measures, metadata):
             for note in measure:
                 if note == 0:
                     rest_on = True
-                elif 0 < note < 15:
+                elif 0 < note < SUSTAIN:
                     rest_on = False
 
-                if rest_on and note == 15:
+                if rest_on and note == SUSTAIN:
                     measure.fitness -= 6
                     phrase.fitness -= 2
 
@@ -659,27 +648,46 @@ def automatic_fitness(phrases, measures, metadata, ff):
         cumulative_fitness = 0
         last_fitness = None
         melody = []
+        chord_idx = 0
+        beat_idx = 1
 
         for measure_idx in phrase:
             measure = measures.genomes[measure_idx]
             measure.fitness = 0  # reset fitness
 
+            idx = 1
+            silent = True
             for note in measure:
+                # figure out the current chord
+                current_chord_info = metadata.chords[chord_idx]
+                note_chord_offsets = chord_shapes[current_chord_info.shape]['offsets']
+                tonic_midi = music21.pitch.Pitch(current_chord_info.root).midi
+
                 if note == 0:  # rest
                     melody += ([-1] * metadata.events_per_note)
-                elif note == 15:  # sustain
+                elif note == SUSTAIN:  # sustain
                     melody += ([-2] * metadata.events_per_note)
                 else:
-                    melody += ([note] * metadata.events_per_note)
+                    silent = False
+                    new_pitch = tonic_midi + note_chord_offsets[note - 1]
+                    melody += ([new_pitch] * metadata.events_per_note)
 
-            cumulative_fitness, _ = ff.evaluate_fitness(melody_as_array=melody)
+                if idx == metadata.notes_per_beat:
+                    beat_idx += 1
+                    idx = 0
+                if beat_idx > current_chord_info.beats:
+                    beat_idx = 1
+                    chord_idx += 1
 
-            # TODO: this is a workaround for a bug and should be removed eventually
-            if cumulative_fitness is None:
-                print("No Fitness Returned")
+                idx += 1
+
+            if silent:
+                measure.fitness = -100
                 continue
-            else:
-                cumulative_fitness = int(cumulative_fitness)
+
+            # get fitness from RNN and cast to integer
+            cumulative_fitness, _ = ff.evaluate_fitness(melody_as_array=melody)
+            cumulative_fitness = int(cumulative_fitness)
 
             # compute change in fitness caused by the new measure
             if last_fitness:
@@ -687,19 +695,18 @@ def automatic_fitness(phrases, measures, metadata, ff):
             else:
                 delta_fitness = cumulative_fitness
 
-            #
             last_fitness = cumulative_fitness
             measure.fitness = delta_fitness
 
             for note in measure:
-                if 0 < note < 15:
+                if 0 < note < SUSTAIN:
                     if last_note:
                         jump_size = last_note - note
                         if jump_size == 0:
                             measure.fitness -= 2
-                        if jump_size > 2:
-                            measure.fitness -= 10 * jump_size
-                            phrase.fitness -= 10 * jump_size
+                        if jump_size > 7:
+                            measure.fitness -= 4 * jump_size
+                            phrase.fitness -= 4 * jump_size
                     last_note = note
 
             total_measure_fitness += measure.fitness
@@ -746,22 +753,24 @@ def main():
 
     measures = MeasurePopulation(measure_pop_size)
     for itr in range(measures.size):
-        m = Measure(length=metadata.notes_per_measure, number_size=4)
+        m = Measure(length=metadata.notes_per_measure, number_size=NOTE_BITS)
         m.initialize()
         measures.genomes.append(m)
 
-    phrases = PhrasePopulation(48)
+    phrases = PhrasePopulation(24)
     for itr in range(phrases.size):
         p = Phrase(length=measures_per_phrase, number_size=phrase_genome_len)
         p.initialize()
         phrases.genomes.append(p)
 
+    start_gen = 0
     if '--resume' in sys.argv:
         gen_idx = sys.argv.index('--resume') + 1
         gen_num = sys.argv[gen_idx]
         print("Loading measure & phrase population " + gen_num + " from files")
         measures.load('measures_' + gen_num + '.np')
         phrases.load('phrases_' + gen_num + '.np')
+        start_gen = int(gen_num) + 1
     if '--manual' in sys.argv:
         manual = True
         ff = None
@@ -820,7 +829,7 @@ def main():
     last_time = time.time()
     t0 = last_time
     max_f = -sys.maxsize
-    for itr in range(num_generations):
+    for itr in range(start_gen, start_gen + num_generations):
 
         # assign fitness
         if manual:

@@ -165,7 +165,7 @@ if 0:
 # arpeggio tonic
 if 1:
     chords = [
-       MyChord('C3', 4, '')
+       MyChord('C3', 4, '7')
     ]
     ff = improv_fitness.FitnessFunction(chords)
     arpeggio_fitness = []
@@ -193,6 +193,6 @@ if 1:
     plt.xlabel('arpeggio tonic')
     plt.grid()
     plt.xticks(range(min_note, max_note, 12))
-    plt.savefig('arpeggio_tonic.png')
+    plt.savefig('improv_rnn_arpeggio_tonic.png')
 
 plt.show()
