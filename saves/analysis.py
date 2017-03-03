@@ -5,7 +5,7 @@ import sys
 measure_pop_size = 32
 phrase_pop_size = 48
 max_gen = 15
-max_note = 32
+max_note = 16
 max_duration = 16
 
 # MEASURES
@@ -25,7 +25,7 @@ plt.yticks([])
 plt.stackplot(np.arange(max_gen), *counts_over_time)
 plt.title('measures used in phrase population')
 plt.xlabel("generation")
-plt.savefig('phrase_distrobution.png')
+plt.savefig('phrase_distribution.png')
 
 # NOTES
 counts_over_time = np.ndarray((max_note, max_gen))
@@ -43,7 +43,7 @@ plt.figure()
 stuff = plt.stackplot(np.arange(max_gen), *counts_over_time)
 plt.title('notes, rests, and sustains, used in measures population')
 plt.xlabel("generation")
-plt.savefig('measures_distrobution.png')
+plt.savefig('measures_distribution.png')
 
 # DURATIONS
 counts_over_time = np.ndarray((max_duration, max_gen))
@@ -69,13 +69,12 @@ for gen_num in range(0, max_gen):
 
 plt.figure()
 plt.yticks([])
-print(counts_over_time)
 stuff = plt.stackplot(np.arange(max_gen), *counts_over_time)
-plt.legend(stuff, ['8th', 'quarter', 'dotted quarter', 'half'])
+plt.legend(stuff, ['8th', 'quarter', 'dotted quarter', 'half', 'half tied to 8th', 'dotted half', 'double dotted half', 'whole'])
 plt.yticks([])
 plt.xlabel("generation")
-plt.title("Durations of notes not included) in number of 8th notes")
+plt.title("Durations of notes in number of 8th notes")
 plt.savefig('durations_used.png')
 
 
-plt.show()
+#plt.show()

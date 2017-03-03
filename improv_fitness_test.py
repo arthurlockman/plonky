@@ -162,37 +162,34 @@ if 0:
     plt.xticks([1,2,3], ['tonic', 'random', 'real jazz'])
     plt.savefig('random_vs_real_jazz.png')
 
-# arpeggio tonic
+# notes tonic
 if 1:
     chords = [
-       MyChord('C3', 4, '7')
+       MyChord('C3', 4, 'maj7'),
+       MyChord('C3', 4, 'maj7'),
+       MyChord('C3', 4, 'maj7'),
+       MyChord('C3', 4, 'maj7'),
     ]
     ff = improv_fitness.FitnessFunction(chords)
-    arpeggio_fitness = []
-    arpeggio_tonics = []
-    min_note = 12 * 2
-    max_note = 127 - 16 - 12 * 2
+    notes_fitness = []
+    notes_tonics = []
+    min_note = 60 - 12 * 2
+    max_note = 60 + 12 * 3
     for tonic in range(min_note, max_note):
         melody = []
-        melody.append(tonic)
-        melody.append(tonic + 4)
-        melody.append(tonic + 7)
-        melody.append(tonic + 12)
-        melody.append(tonic + 16)
-        melody.append(tonic + 12)
-        melody.append(tonic + 7)
-        melody.append(tonic + 4)
+        for _ in range(64):
+            melody.append(tonic)
 
         f, l = ff.evaluate_fitness(melody)
-        arpeggio_fitness.append(f / l)
-        arpeggio_tonics.append(tonic)
+        notes_fitness.append(f / l)
+        notes_tonics.append(tonic)
 
     plt.figure()
-    plt.plot(arpeggio_tonics, arpeggio_fitness, linestyle='None', marker='o', markersize=3, label='arpeggio')
-    plt.ylabel("Fitness"),
-    plt.xlabel('arpeggio tonic')
+    plt.plot(notes_tonics, notes_fitness, linestyle='None', marker='o', markersize=3, label='notes')
+    plt.ylabel("Fitness in C3 major 7 chord"),
+    plt.xlabel('midi pitch of note')
     plt.grid()
     plt.xticks(range(min_note, max_note, 12))
-    plt.savefig('improv_rnn_arpeggio_tonic.png')
+    plt.savefig('improv_rnn_notes_tonic.png')
 
 plt.show()
