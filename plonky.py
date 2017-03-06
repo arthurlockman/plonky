@@ -724,7 +724,7 @@ def main():
         time.sleep(10)
 
     measure_pop_size = 32
-    smallest_note = 8
+    smallest_note = 16
     # one measure of each chord for 4 beats each
     chords = [MyChord('C3', 8, 'maj7'),
               MyChord('F3', 4, 'min7'),
