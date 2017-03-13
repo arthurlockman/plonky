@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from itertools import cycle
 import numpy as np
 import sys
 
@@ -42,9 +43,9 @@ for gen_num in range(0, max_gen):
 fig = plt.figure()
 ax = fig.add_subplot(111)
 stuff = ax.stackplot(np.arange(max_gen), *counts_over_time)
-lgd = ax.legend(stuff,
+lgd = ax.legend(stuff[::-1],
                 ['rest', 'note 1', 'note 2', 'note 3', 'note 4', 'note 5', 'note 6', 'note 7', 'note 8', 'note 9',
-                 'note 10', 'note 11', 'note 12', 'note 13', 'note 14', 'sustain'], loc='center left',
+                    'note 10', 'note 11', 'note 12', 'note 13', 'note 14', 'sustain'][::-1], loc='center left',
                 bbox_to_anchor=(1, 0.5))
 ax.set_title('Notes, Rests, and Sustains, Used in Measures Population')
 ax.set_xlabel("generation")
@@ -77,10 +78,12 @@ plt.yticks([])
 stuff = plt.stackplot(np.arange(max_gen), *counts_over_time)
 plt.legend(stuff, ['8th', 'quarter', 'dotted quarter', 'half', 'half tied to 8th', 'dotted half', 'double dotted half',
                    'whole'])
+print(stuff)
+plt.legend(stuff[::-1], ['8th', 'quarter', 'dotted quarter', 'half', 'half tied to 8th', 'dotted half', 'double dotted half',
+    'whole'][::-1])
 plt.yticks([])
 plt.xlabel("generation")
 plt.title("Durations of Notes in Number of 8th Notes")
 plt.savefig('durations_used.png', bbox_inches='tight')
 
-
-# plt.show()
+plt.show()
