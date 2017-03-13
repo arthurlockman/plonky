@@ -170,26 +170,57 @@ if 1:
        MyChord('C3', 4, 'maj7'),
        MyChord('C3', 4, 'maj7'),
     ]
-    ff = improv_fitness.FitnessFunction(chords)
-    notes_fitness = []
-    notes_tonics = []
-    min_note = 60 - 12 * 2
-    max_note = 60 + 12 * 3
-    for tonic in range(min_note, max_note):
-        melody = []
-        for _ in range(64):
-            melody.append(tonic)
 
-        f, l = ff.evaluate_fitness(melody)
-        notes_fitness.append(f / l)
-        notes_tonics.append(tonic)
+    def yas(min_note, max_note, register):
+        ff = improv_fitness.FitnessFunction(chords)
+        notes_fitness_4 = []
+        notes_fitness_8 = []
+        notes_fitness_16 = []
+        for tonic in range(min_note, max_note):
+            melody = []
+            for _ in range(64):
+                melody.append(tonic)
 
-    plt.figure()
-    plt.plot(notes_tonics, notes_fitness, linestyle='None', marker='o', markersize=3, label='notes')
-    plt.ylabel("Fitness in C3 major 7 chord"),
-    plt.xlabel('midi pitch of note')
-    plt.grid()
-    plt.xticks(range(min_note, max_note, 12))
-    plt.savefig('improv_rnn_notes_tonic.png')
+            f, l = ff.evaluate_fitness(melody)
+            notes_fitness_16.append(f / l)
 
-plt.show()
+            melody = []
+            for _ in range(32):
+                melody.append(tonic)
+                melody.append(-2)
+
+            f, l = ff.evaluate_fitness(melody)
+            notes_fitness_8.append(f / l)
+
+            melody = []
+            for _ in range(16):
+                melody.append(tonic)
+                melody.append(-2)
+                melody.append(-2)
+                melody.append(-2)
+
+            f, l = ff.evaluate_fitness(melody)
+            notes_fitness_4.append(f / l)
+
+        plt.figure()
+        plt.plot(notes_fitness_4, linestyle='None', marker='o', markersize=6, label='Quarter notes')
+        plt.plot(notes_fitness_8, linestyle='None', marker='x', markersize=6, label='8th notes')
+        plt.plot(notes_fitness_16, linestyle='None', marker='.', markersize=6, label='16th notes')
+        plt.ylabel("Fitness in C3 major 7 chord"),
+        plt.xlabel('pitch class starting at C%i' % register)
+        labels = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+        plt.xticks([0,1,2,3,4,5,6,7,8,9,10,11,12], labels)
+        plt.grid()
+        plt.legend()
+        print("fitness for register C%i" % register)
+        print(labels)
+        print(["%0.3f" % f for f in notes_fitness_4])
+        print(["%0.3f" % f for f in notes_fitness_8])
+        print(["%0.3f" % f for f in notes_fitness_16])
+        plt.subplots_adjust(left=0.2, bottom=0.2)
+        plt.savefig('C%i-C%i.png' % (register, register + 1))
+
+    yas(60 - 12, 60, 3)
+    yas(60, 60 + 12, 4)
+
+#plt.show()
