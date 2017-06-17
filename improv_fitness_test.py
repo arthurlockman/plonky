@@ -10,7 +10,7 @@ roots = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 shapes = ['maj7', 'min7', 'maj', 'min', 'dim']
 
 # real jazz vs random melody + random chords
-if 0:
+if 1:
     tonic_fitness = []
     print("Just the tonic")
     for _ in range(7):
@@ -160,7 +160,7 @@ if 0:
     plt.boxplot([tonic_fitness, random_fitness, jazz_fitness], 0, '')
     plt.ylabel("Fitness")
     plt.xticks([1,2,3], ['tonic', 'random', 'real jazz'])
-    plt.savefig('random_vs_real_jazz.png')
+    plt.savefig('random_vs_real_jazz.svg', format='svg', dpi=1200)
 
 # notes tonic
 if 1:
@@ -206,7 +206,7 @@ if 1:
         plt.plot(notes_fitness_4, linestyle='None', marker='o', markersize=6, label='Quarter notes')
         plt.plot(notes_fitness_8, linestyle='None', marker='x', markersize=6, label='8th notes')
         plt.plot(notes_fitness_16, linestyle='None', marker='.', markersize=6, label='16th notes')
-        plt.ylabel("Fitness in C3 major 7 chord"),
+        plt.ylabel("Fitness"),
         plt.xlabel('pitch class starting at C%i' % register)
         labels = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
         plt.xticks([0,1,2,3,4,5,6,7,8,9,10,11,12], labels)
@@ -218,7 +218,7 @@ if 1:
         print(["%0.3f" % f for f in notes_fitness_8])
         print(["%0.3f" % f for f in notes_fitness_16])
         plt.subplots_adjust(left=0.2, bottom=0.2)
-        plt.savefig('C%i-C%i.png' % (register, register + 1))
+        plt.savefig('C%i-C%i.svg' % (register, register + 1), format='svg', dpi=1200 )
 
     yas(60 - 12, 60, 3)
     yas(60, 60 + 12, 4)

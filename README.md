@@ -9,26 +9,26 @@ Please submit any issues or bugs through the GitHub issue tracker.
 
 ## Manual Setup
 
-Install magenta: [https://github.com/tensorflow/magenta/#installation](https://github.com/tensorflow/magenta/#installation)
-
+You must install magenta from source, at this commit: 38cf427823e48fec134ffc26e864546603009a92
+You can try to update, but we only promise everything will work at that commit.
 Make sure you source you magenta conda environment on every new terminal you start. Also make sure pycharm knows about it by setting the interpreter in the project settings. [More info on that here](https://docs.continuum.io/anaconda/ide_integration#pycharm).
 
 Install some other packages:
 
     pip install music21 bistream pygame matplotlib numpy
-    
+
 Get or train your own magenta model. The easiest thing is to just download one from magenta's github, and change the line of code in `fitness.py` that looks like this:
 
     tf.app.flags.DEFINE_string(
         'bundle_file', '/home/peter/Projects/magenta/bundles/attention_rnn.mag',
-        
+
 Have that point to the .mag file you downloaded. Use the full path, and make sure this line of code is commented out:
 
     setattr(FLAGS, 'run_dir', 'logdir/20000')
 
 ## Setup with Docker
 
-The easiest way to train Plonky is to use our Docker image. To build an image and run a container, 
+The easiest way to train Plonky is to use our Docker image. To build an image and run a container,
 change directories to the project root and run:
 
     docker run -it -v /path/to/your/plonky/root:/plonky arthurlockman/plonky
