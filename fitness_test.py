@@ -10,7 +10,7 @@ import fitness
 ff = fitness.FitnessFunction()
 
 # random versus good jazz solos
-if 1:
+if 0:
     N = 20
     random_fitness = []
     def random_midi(ff):
@@ -52,7 +52,7 @@ if 1:
     plt.savefig('random_vs_real_jazz.png')
 
 # arpeggio tonic
-if 1:
+if 0:
     arpeggio_fitness = []
     for tonic in range(0, 110):
         s = music21.stream.Stream()
@@ -79,7 +79,7 @@ if 1:
     plt.savefig('arpeggio_tonic.png')
 
 # arpeggio lengths
-if 1:
+if 0:
     arpeggio_fitness = []
     arpeggio_lengths = []
     for _ in range(0, 50):
@@ -138,10 +138,10 @@ if 1:
     plt.title("Random Midi")
     plt.ylabel("Fitness")
     plt.xlabel('Number of Measures')
-    plt.savefig('ranodm_midi_length.png')
+    plt.savefig('random_midi_length.svg', format='svg', dpi=1200)
 
 # note lengths
-if 1:
+if 0:
     measures = 10
     lengths = []
     fitness = []

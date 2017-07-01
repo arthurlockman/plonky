@@ -96,14 +96,14 @@ tf.app.flags.DEFINE_string(
     'chord, in steps, is specified by the steps_per_chord flag.')
 setattr(FLAGS, 'hparams', "{'batch_size':64,'rnn_layer_sizes':[64,64]}")
 
-setattr(FLAGS, 'run_dir', 'logdir/30000_lookback')
+#setattr(FLAGS, 'run_dir', 'logdir/30000_lookback')
 #setattr(FLAGS, 'config', 'lookback_rnn')
-#setattr(FLAGS, 'config', 'attention_rnn')
+setattr(FLAGS, 'config', 'attention_rnn')
 #setattr(FLAGS, 'run_dir', 'logdir/20000')
 #setattr(FLAGS, 'run_dir', 'logdir/30000')
 #setattr(FLAGS, 'run_dir', 'logdir/jazzomat')
 #setattr(FLAGS, 'bundle_file', '/home/peter/Projects/magenta/bundles/lookback_rnn.mag')
-#setattr(FLAGS, 'bundle_file', '/home/peter/Projects/magenta/bundles/attention_rnn.mag')
+setattr(FLAGS, 'bundle_file', '/home/peter/Projects/magenta/bundles/attention_rnn.mag')
 
 
 def get_checkpoint():
